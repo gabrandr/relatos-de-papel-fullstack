@@ -1,17 +1,49 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { createPayment } from "../../api/paymentsApi";
 import { useCartStore } from "../../store/useCartStore";
 
-/**
- * Resumen final del pedido y botón para confirmar compra.
- */
 const CheckoutSummary = () => {
   const navigate = useNavigate();
+  const cart = useCartStore((state) => state.cart);
   const getCartTotal = useCartStore((state) => state.getCartTotal);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
   const total = getCartTotal();
 
-  const handleConfirmOrder = () => {
-    // Redirigir a confirmación con estado para permitir acceso
-    navigate("/order-confirmation", { state: { orderCompleted: true } });
+  const handleConfirmOrder = async () => {
+    if (cart.length === 0 || isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const results = [];
+      for (const item of cart) {
+        const payment = await createPayment({
+          userId: 1,
+          bookId: item.id,
+          quantity: item.quantity,
+        });
+        results.push(payment);
+      }
+
+      navigate("/order-confirmation", {
+        state: {
+          orderCompleted: true,
+          paymentIds: results.map((payment) => payment.id),
+        },
+      });
+    } catch (err) {
+      setError(err.message || "No se pudo confirmar la compra");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,16 +72,17 @@ const CheckoutSummary = () => {
         </div>
       </div>
 
+      {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
+
       <button
         onClick={handleConfirmOrder}
-        className="w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary-dark transition-all transform hover:-translate-y-0.5 shadow-lg shadow-primary/30 uppercase tracking-widest text-sm"
+        disabled={isSubmitting}
+        className="w-full bg-primary text-white py-4 rounded-xl font-bold hover:bg-primary-dark transition-all transform hover:-translate-y-0.5 shadow-lg shadow-primary/30 uppercase tracking-widest text-sm disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        Confirmar y Pagar
+        {isSubmitting ? "Procesando..." : "Confirmar y Pagar"}
       </button>
 
-      <p className="text-xs text-center text-text-muted mt-4">
-        Transacción segura y encriptada
-      </p>
+      <p className="text-xs text-center text-text-muted mt-4">Transacción segura y encriptada</p>
     </div>
   );
 };

@@ -91,8 +91,39 @@ A continuación se detallan las operaciones disponibles en cada microservicio, s
 - **Lenguaje:** Java 21 / 25
 - **Framework:** Spring Boot 3.4.1
 - **Cloud:** Spring Cloud (Gateway, Eureka)
-- **Base de Datos:** H2 Database (En memoria)
+- **Motor de búsqueda:** OpenSearch (Bonsai) para `ms-books-catalogue`
+- **Base de Datos transaccional:** PostgreSQL para `ms-books-payments`
 - **Herramientas:** Maven, Lombok, Postman
+
+---
+
+## 🐘 PostgreSQL para ms-books-payments (Fase local)
+
+Desde esta actividad, `ms-books-payments` usa PostgreSQL en lugar de H2.
+
+- Archivo compose inicial: `docker-compose.payments-postgres.yml`
+- Servicio DB: `postgres-payments` (`payments_db`)
+- Servicio app: `ms-books-payments`
+
+Comando de arranque:
+
+```bash
+cd relatos-de-papel-backend
+docker compose -f docker-compose.payments-postgres.yml up --build
+```
+
+---
+
+## 🐳 Stack backend completo en local
+
+Para levantar `eureka + gateway + catalogue(opensearch) + payments(postgres)`:
+
+```bash
+cd relatos-de-papel-backend
+cp .env.example .env
+# Editar .env y colocar credenciales OPENSEARCH_* reales
+docker compose -f docker-compose.backend-local.yml up --build
+```
 
 ---
 

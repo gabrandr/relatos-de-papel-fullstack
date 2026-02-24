@@ -1,0 +1,45 @@
+services:
+  postgres-payments:
+    image: postgres:17-alpine
+    container_name: postgres-payments
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payments_user
+      POSTGRES_PASSWORD: payments_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_payments_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payments_user -d payments_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ms-books-payments:
+    build:
+      context: ./ms-books-payments
+    container_name: ms-books-payments
+    restart: unless-stopped
+    depends_on:
+      postgres-payments:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      POSTGRES_HOST: postgres-payments
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payments_user
+      POSTGRES_PASSWORD: payments_pass
+      SQL_INIT_MODE: always
+      JPA_DDL_AUTO: create-drop
+      EUREKA_ENABLED: false
+      EUREKA_REGISTER: false
+      EUREKA_FETCH: false
+      EUREKA_URL: http://host.docker.internal:8761/eureka
+    ports:
+      - "8082:8082"
+
+volumes:
+  postgres_payments_data:

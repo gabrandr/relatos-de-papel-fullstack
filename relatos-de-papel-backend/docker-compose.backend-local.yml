@@ -1,0 +1,96 @@
+services:
+  eureka-server:
+    build:
+      context: ./eureka-server
+    container_name: eureka-server
+    restart: unless-stopped
+    environment:
+      PORT: 8761
+      HOSTNAME: eureka-server
+    ports:
+      - "8761:8761"
+
+  postgres-payments:
+    image: postgres:17-alpine
+    container_name: postgres-payments
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payments_user
+      POSTGRES_PASSWORD: payments_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_payments_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payments_user -d payments_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ms-books-catalogue:
+    build:
+      context: ./ms-books-catalogue
+    container_name: ms-books-catalogue
+    restart: unless-stopped
+    depends_on:
+      - eureka-server
+    environment:
+      PORT: 8081
+      HOSTNAME: ms-books-catalogue
+      EUREKA_URL: http://eureka-server:8761/eureka
+      EUREKA_ENABLED: true
+      EUREKA_REGISTER: true
+      EUREKA_FETCH: true
+      OPENSEARCH_URL: ${OPENSEARCH_URL}
+      OPENSEARCH_USERNAME: ${OPENSEARCH_USERNAME}
+      OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD}
+      OPENSEARCH_INDEX: ${OPENSEARCH_INDEX:-relatos}
+    ports:
+      - "8081:8081"
+
+  ms-books-payments:
+    build:
+      context: ./ms-books-payments
+    container_name: ms-books-payments
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_started
+      postgres-payments:
+        condition: service_healthy
+    environment:
+      PORT: 8082
+      HOSTNAME: ms-books-payments
+      EUREKA_URL: http://eureka-server:8761/eureka
+      EUREKA_ENABLED: true
+      EUREKA_REGISTER: true
+      EUREKA_FETCH: true
+      POSTGRES_HOST: postgres-payments
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payments_user
+      POSTGRES_PASSWORD: payments_pass
+      SQL_INIT_MODE: always
+      JPA_DDL_AUTO: create-drop
+    ports:
+      - "8082:8082"
+
+  gateway:
+    build:
+      context: ./gateway
+    container_name: gateway
+    restart: unless-stopped
+    depends_on:
+      - eureka-server
+      - ms-books-catalogue
+      - ms-books-payments
+    environment:
+      PORT: 8762
+      HOSTNAME: gateway
+      EUREKA_URL: http://eureka-server:8761/eureka
+    ports:
+      - "8762:8762"
+
+volumes:
+  postgres_payments_data:
