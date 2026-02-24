@@ -1,0 +1,541 @@
+{
+  "info": {
+    "_postman_id": "ms-books-catalogue-gateway-v2",
+    "name": "MS Books Catalogue - Gateway API Tests",
+    "description": "Colección actualizada para probar MS Books Catalogue vía Gateway.\n\n**IMPORTANTE:** El Gateway solo acepta POST con body GatewayRequest\n**Estructura:** {targetMethod, queryParams, body}\n**Base URL:** http://localhost:8762/api/books\n**Requiere:** Eureka (8761) + Gateway (8762) + MS Catalogue (8081) corriendo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:8762",
+      "type": "string"
+    },
+    {
+      "key": "book_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. CRUD Operations",
+      "item": [
+        {
+          "name": "GET All Books",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            }
+          }
+        },
+        {
+          "name": "GET Book by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/{{book_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "{{book_id}}"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Harry Potter y la Piedra Filosofal\",\n    \"author\": \"J.K. Rowling\",\n    \"category\": \"Fantasía\",\n    \"isbn\": \"9788498382686\",\n    \"price\": 22.50,\n    \"stock\": 15,\n    \"rating\": 5,\n    \"visible\": true,\n    \"publicationDate\": \"1997-06-26\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            }
+          }
+        },
+        {
+          "name": "PUT Update Book (Complete)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PUT\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Don Quijote de la Mancha (Edición Especial)\",\n    \"author\": \"Miguel de Cervantes Saavedra\",\n    \"category\": \"Clásicos\",\n    \"isbn\": \"9788467033601\",\n    \"price\": 25.99,\n    \"stock\": 20,\n    \"rating\": 5,\n    \"visible\": true,\n    \"publicationDate\": \"1605-01-16\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/1",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "1"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Update Book (Partial)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"price\": 17.99,\n    \"stock\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/3",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "3"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Book",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"DELETE\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/7",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "7"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Advanced Operations",
+      "item": [
+        {
+          "name": "SEARCH - By Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"category\": [\"Clásicos\"]\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - By Author",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"author\": [\"García\"]\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - By Price Range",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"minPrice\": [\"15\"],\n    \"maxPrice\": [\"25\"]\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - Multiple Filters",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"category\": [\"Ficción\"],\n    \"ratingMin\": [\"4\"],\n    \"visible\": [\"true\"]\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - Visible False",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"visible\": [\"false\"]\n  },\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            }
+          }
+        },
+        {
+          "name": "GET Book Availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/1/availability",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "1", "availability"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Update Stock (Decrement)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"quantity\": -2\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/1/stock",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "1", "stock"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Update Stock (Increment)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"quantity\": 10\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/5/stock",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "5", "stock"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Validation Tests",
+      "item": [
+        {
+          "name": "POST - Invalid (Empty Title)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"\",\n    \"author\": \"Test Author\",\n    \"category\": \"Test\",\n    \"isbn\": \"1234567890\",\n    \"price\": 10.00,\n    \"stock\": 5,\n    \"visible\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            }
+          }
+        },
+        {
+          "name": "POST - Invalid (Negative Price)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Test Book\",\n    \"author\": \"Test Author\",\n    \"category\": \"Test\",\n    \"isbn\": \"1234567890\",\n    \"price\": -5.00,\n    \"stock\": 5,\n    \"visible\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            }
+          }
+        },
+        {
+          "name": "POST - Duplicate ISBN (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Libro Duplicado\",\n    \"author\": \"Autor\",\n    \"category\": \"Test\",\n    \"isbn\": \"9788467033601\",\n    \"price\": 10.00,\n    \"stock\": 5,\n    \"visible\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            }
+          }
+        },
+        {
+          "name": "GET - Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/9999",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "9999"]
+            }
+          }
+        },
+        {
+          "name": "PUT - Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PUT\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Libro Inexistente\",\n    \"author\": \"Autor\",\n    \"category\": \"Test\",\n    \"isbn\": \"9999999999\",\n    \"price\": 12.00,\n    \"stock\": 5,\n    \"rating\": 4,\n    \"visible\": true,\n    \"publicationDate\": \"2000-01-01\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/9999",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "9999"]
+            }
+          }
+        },
+        {
+          "name": "PATCH - Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"price\": 10.00\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/9999",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "9999"]
+            }
+          }
+        },
+        {
+          "name": "DELETE - Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"DELETE\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/9999",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "9999"]
+            }
+          }
+        },
+        {
+          "name": "PUT - Invalid (Negative Price)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PUT\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Libro Test\",\n    \"author\": \"Autor\",\n    \"category\": \"Test\",\n    \"isbn\": \"9788467033601\",\n    \"price\": -1.00,\n    \"stock\": 5,\n    \"rating\": 4,\n    \"visible\": true,\n    \"publicationDate\": \"2000-01-01\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/1",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "1"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Stock - Invalid (Null Quantity)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {}\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/1/stock",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "1", "stock"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Stock - Invalid (Insufficient Stock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"quantity\": -100\n  }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/books/5/stock",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "5", "stock"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

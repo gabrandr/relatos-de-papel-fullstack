@@ -1,0 +1,433 @@
+{
+  "info": {
+    "_postman_id": "ms-books-payments-gateway-v4",
+    "name": "MS Books Payments - Gateway API Tests (Tunneling)",
+    "description": "Colección ADAPTADA al Gateway del proyecto. \n\n**IMPORTANTE:** Todas las peticiones son `POST` al Gateway (8762). El método real (GET, POST, DELETE) viaja dentro del body en el campo `targetMethod`.\n\n**Estructura del Body:**\n```json\n{\n  \"targetMethod\": \"METODO_REAL\",\n  \"queryParams\": { \"key\": [\"val\"] },\n  \"body\": { ... payload ... }\n}\n```",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:8762",
+      "type": "string"
+    },
+    {
+      "key": "payment_id",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. CRUD Operations",
+      "item": [
+        {
+          "name": "GET All Payments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {},\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "GET Payment by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {},\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Payment (Happy Path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 1,\n        \"quantity\": 1\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "PATCH Update Status (Approve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"PATCH\",\n    \"queryParams\": {},\n    \"body\": {\n        \"status\": \"APPROVED\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Cancel Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"DELETE\",\n    \"queryParams\": {},\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Search & Filters",
+      "item": [
+        {
+          "name": "SEARCH - By User ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {\n        \"userId\": [\"1\"]\n    },\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - By Book ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {\n        \"bookId\": [\"1\"]\n    },\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - By Status (COMPLETED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {\n        \"status\": [\"COMPLETED\"]\n    },\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "search"]
+            }
+          }
+        },
+        {
+          "name": "SEARCH - Combined Filters",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {\n        \"userId\": [\"1\"],\n        \"status\": [\"COMPLETED\"]\n    },\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "search"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Error Cases & Validations",
+      "item": [
+        {
+          "name": "POST - Invalid Quantity (0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 1,\n        \"quantity\": 0\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "POST - Invalid User ID (0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 0,\n        \"bookId\": 1,\n        \"quantity\": 1\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "POST - Invalid Book ID (0)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 0,\n        \"quantity\": 1\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "POST - Invalid Book (Not Found - 404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 9999,\n        \"quantity\": 1\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "POST - Book Hidden (Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 7,\n        \"quantity\": 1\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "POST - Insufficient Stock (Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"POST\",\n    \"queryParams\": {},\n    \"body\": {\n        \"userId\": 1,\n        \"bookId\": 1,\n        \"quantity\": 10000\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            }
+          }
+        },
+        {
+          "name": "GET - Payment Not Found (404)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"GET\",\n    \"queryParams\": {},\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/9999",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "9999"]
+            }
+          }
+        },
+        {
+          "name": "PATCH - Empty Status (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"PATCH\",\n    \"queryParams\": {},\n    \"body\": {\n        \"status\": \"\"\n    }\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE - Already Cancelled (Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"targetMethod\": \"DELETE\",\n    \"queryParams\": {},\n    \"body\": null\n}"
+            },
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
