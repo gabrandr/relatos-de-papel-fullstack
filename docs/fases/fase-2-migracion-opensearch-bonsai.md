@@ -62,3 +62,8 @@ Migrar `ms-books-catalogue` desde búsqueda relacional (JPA Specifications) a Op
 - [2026-02-24] Ajuste de sugerencias: filtrado de resultados visibles y pertinencia textual para evitar sugerencias no relacionadas.
 - [2026-02-24] Corrección de ISBN semilla para mejorar resolución de portadas por OpenLibrary.
 - [2026-02-24] La semilla pasó de \"solo si índice vacío\" a sincronización de catálogo base para corregir datos existentes en el índice.
+- [2026-02-25] Validación masiva de ISBN contra Open Library para asegurar consistencia entre `title`, `author`, `isbn` y portada (`covers.openlibrary.org`).
+- [2026-02-25] Corrección de ISBN inconsistentes en semilla de catálogo: `Don Quijote`, `Orgullo y Prejuicio`, `El Señor de los Anillos`, `Dune`, `Moby Dick` y alineación completa de ISBN en `OpenSearchBookStore.syncSeedData`.
+- [2026-02-25] Expansión de catálogo base con 20 libros adicionales (IDs 9-28), todos con ISBN validados y portada disponible.
+- [2026-02-25] Estrategia de seed ajustada: `initialize()` ahora ejecuta `syncSeedData()` solo si `isIndexEmpty()` (`GET /{index}/_count == 0`) para evitar reindexación total en cada arranque.
+- [2026-02-25] Verificación por gateway de catálogo resultante: 28 registros totales en índice y 27 visibles en listados (`visible=true` por defecto en `findAllVisible`).

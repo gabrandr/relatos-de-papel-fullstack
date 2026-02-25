@@ -44,7 +44,20 @@ public class OpenSearchBookStore {
     @PostConstruct
     void initialize() {
         ensureIndex();
-        syncSeedData();
+        if (isIndexEmpty()) {
+            syncSeedData();
+        }
+    }
+
+    private boolean isIndexEmpty() {
+        try {
+            Response response = restClient.performRequest(
+                    new Request("GET", "/" + properties.getIndex() + "/_count"));
+            JsonNode root = objectMapper.readTree(response.getEntity().getContent());
+            return root.path("count").asLong(0L) == 0L;
+        } catch (IOException ex) {
+            throw fail("Error consultando count del índice", ex);
+        }
     }
 
     public List<BookResponseDTO> findAllVisible() {
@@ -53,7 +66,8 @@ public class OpenSearchBookStore {
 
     public BookResponseDTO findById(Long id) {
         try {
-            Response response = restClient.performRequest(new Request("GET", "/" + properties.getIndex() + "/_doc/" + id));
+            Response response = restClient
+                    .performRequest(new Request("GET", "/" + properties.getIndex() + "/_doc/" + id));
             JsonNode root = objectMapper.readTree(response.getEntity().getContent());
             if (!root.path("found").asBoolean(false)) {
                 return null;
@@ -342,14 +356,68 @@ public class OpenSearchBookStore {
     private void syncSeedData() {
         try {
             List<BookResponseDTO> seedBooks = List.of(
-                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes", LocalDate.parse("1605-01-16"), "Clásicos", "9788484030300", 5, true, 15, new BigDecimal("19.99")),
-                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez", LocalDate.parse("1967-05-30"), "Clásicos", "9788497592208", 5, true, 8, new BigDecimal("24.99")),
-                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción", "9788499890944", 5, true, 12, new BigDecimal("18.50")),
-                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"), "Romance", "9788469833346", 4, true, 20, new BigDecimal("16.99")),
-                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"), "Fantasía", "9780261102385", 5, true, 3, new BigDecimal("35.00")),
-                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción", "9780441172719", 5, true, 10, new BigDecimal("28.99")),
-                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos", "9780142437247", 4, false, 5, new BigDecimal("22.00")),
-                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"), "Ficción", "9788498381498", 5, true, 25, new BigDecimal("9.99")));
+                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes",
+                            LocalDate.parse("1605-01-16"), "Clásicos", "9788484030300", 5, true, 15,
+                            new BigDecimal("19.99")),
+                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez",
+                            LocalDate.parse("1967-05-30"), "Clásicos", "9788497592208", 5, true, 8,
+                            new BigDecimal("24.99")),
+                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción",
+                            "9788499890944", 5, true, 12, new BigDecimal("18.50")),
+                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"),
+                            "Romance", "9788469833346", 4, true, 20, new BigDecimal("16.99")),
+                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"),
+                            "Fantasía", "9780261102385", 5, true, 3, new BigDecimal("35.00")),
+                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción",
+                            "9780441172719", 5, true, 10, new BigDecimal("28.99")),
+                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos",
+                            "9780142437247", 4, false, 5, new BigDecimal("22.00")),
+                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"),
+                            "Ficción", "9788498381498", 5, true, 25, new BigDecimal("9.99")),
+                    new BookResponseDTO(9L, "Fahrenheit 451", "Ray Bradbury", LocalDate.parse("1953-10-19"),
+                            "Ciencia Ficción", "9781451673319", 5, true, 14, new BigDecimal("17.99")),
+                    new BookResponseDTO(10L, "The Great Gatsby", "F. Scott Fitzgerald", LocalDate.parse("1925-04-10"),
+                            "Clásicos", "9780743273565", 5, true, 18, new BigDecimal("15.99")),
+                    new BookResponseDTO(11L, "To Kill a Mockingbird", "Harper Lee", LocalDate.parse("1960-07-11"),
+                            "Clásicos", "9780061120084", 5, true, 12, new BigDecimal("18.99")),
+                    new BookResponseDTO(12L, "Brave New World", "Aldous Huxley", LocalDate.parse("1932-01-01"),
+                            "Ciencia Ficción", "9780060850524", 5, true, 13, new BigDecimal("16.99")),
+                    new BookResponseDTO(13L, "Crime and Punishment", "Fyodor Dostoevsky", LocalDate.parse("1866-01-01"),
+                            "Clásicos", "9780143058144", 5, true, 9, new BigDecimal("19.99")),
+                    new BookResponseDTO(14L, "Anna Karenina", "Leo Tolstoy", LocalDate.parse("1878-01-01"), "Clásicos",
+                            "9780143035008", 5, true, 10, new BigDecimal("20.99")),
+                    new BookResponseDTO(15L, "The Catcher in the Rye", "J.D. Salinger", LocalDate.parse("1951-07-16"),
+                            "Ficción", "9780316769488", 4, true, 15, new BigDecimal("17.49")),
+                    new BookResponseDTO(16L, "The Hobbit", "J.R.R. Tolkien", LocalDate.parse("1937-09-21"), "Fantasía",
+                            "9780547928227", 5, true, 11, new BigDecimal("21.99")),
+                    new BookResponseDTO(17L, "The Alchemist", "Paulo Coelho", LocalDate.parse("1988-01-01"), "Ficción",
+                            "9780061122415", 5, true, 16, new BigDecimal("16.49")),
+                    new BookResponseDTO(18L, "The Name of the Rose", "Umberto Eco", LocalDate.parse("1980-01-01"),
+                            "Misterio", "9780156001311", 5, true, 8, new BigDecimal("18.49")),
+                    new BookResponseDTO(19L, "The Shadow of the Wind", "Carlos Ruiz Zafón",
+                            LocalDate.parse("2001-01-01"), "Misterio", "9780143034902", 5, true, 12,
+                            new BigDecimal("19.49")),
+                    new BookResponseDTO(20L, "The Girl with the Dragon Tattoo", "Stieg Larsson",
+                            LocalDate.parse("2005-01-01"), "Thriller", "9780307454546", 5, true, 10,
+                            new BigDecimal("18.99")),
+                    new BookResponseDTO(21L, "Sapiens A brief Story of Human Kind", "Yuval Noah Harari",
+                            LocalDate.parse("2011-01-01"), "No Ficción", "9780062316097", 5, true, 14,
+                            new BigDecimal("22.99")),
+                    new BookResponseDTO(22L, "The metamorphosis", "Franz Kafka", LocalDate.parse("1915-01-01"),
+                            "Clásicos", "9780553213690", 5, true, 19, new BigDecimal("12.99")),
+                    new BookResponseDTO(23L, "War And Peace", "Leo Tolstoy", LocalDate.parse("1869-01-01"), "Clásicos",
+                            "9780199232765", 5, true, 7, new BigDecimal("24.99")),
+                    new BookResponseDTO(24L, "Dracula", "Bram Stoker", LocalDate.parse("1897-01-01"), "Terror",
+                            "9780486411095", 5, true, 17, new BigDecimal("14.99")),
+                    new BookResponseDTO(25L, "Frankenstein", "Mary Shelley", LocalDate.parse("1818-01-01"), "Terror",
+                            "9780486282114", 5, true, 15, new BigDecimal("13.99")),
+                    new BookResponseDTO(26L, "The Picture of Dorian Gray", "Oscar Wilde", LocalDate.parse("1890-01-01"),
+                            "Clásicos", "9780141439570", 5, true, 13, new BigDecimal("15.49")),
+                    new BookResponseDTO(27L, "The Brothers Karamazov", "Fyodor Dostoevsky",
+                            LocalDate.parse("1880-01-01"), "Clásicos", "9780374528379", 5, true, 8,
+                            new BigDecimal("23.99")),
+                    new BookResponseDTO(28L, "Notre-Dame of Paris", "Victor Hugo", LocalDate.parse("1831-01-01"),
+                            "Clásicos", "9780140443530", 4, true, 9, new BigDecimal("17.99")));
 
             StringBuilder bulk = new StringBuilder();
             for (BookResponseDTO book : seedBooks) {

@@ -44,3 +44,6 @@ Migrar el microservicio `ms-books-payments` desde H2 a PostgreSQL y dejarlo oper
 - [2026-02-24] `docker-compose.payments-postgres.yml`: creado entorno local mínimo `postgres + ms-books-payments`.
 - [2026-02-24] Validación compose: `docker compose -f docker-compose.payments-postgres.yml config` ejecuta correctamente.
 - [2026-02-24] Validación de compilación: el wrapper `mvnw` no es usable en este repo (falta `.mvn/`), y la compilación con Maven requiere red a Maven Central.
+- [2026-02-25] Persistencia ajustada para evitar reinicio de dataset en cada arranque: `spring.jpa.hibernate.ddl-auto` pasó de `create-drop` a `update` y `spring.sql.init.mode` de `always` a `never` en `ms-books-payments/src/main/resources/application.yaml`.
+- [2026-02-25] `docker-compose.backend-local.yml`: variables de `ms-books-payments` actualizadas a `JPA_DDL_AUTO=update` y `SQL_INIT_MODE=never`.
+- [2026-02-25] Validación operativa tras reinicio de `ms-books-payments`: creación de pago de prueba y comprobación de permanencia posterior al restart del servicio (sin recarga automática de `data.sql`).

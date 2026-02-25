@@ -47,3 +47,5 @@ Crear imágenes Docker para los servicios backend y orquestarlos localmente.
 - [2026-02-24] Se creó `.env.example` con variables `OPENSEARCH_*`.
 - [2026-02-24] Validación de sintaxis compose ejecutada: `docker compose -f docker-compose.backend-local.yml config`.
 - [2026-02-24] Guía local ampliada con instrucciones para importar colección Postman de pruebas backend.
+- [2026-02-25] Ajuste de persistencia de pagos en compose local: `ms-books-payments` pasó a `JPA_DDL_AUTO=update` y `SQL_INIT_MODE=never` para evitar reinicialización de tabla/seed en reinicios.
+- [2026-02-25] Rebuild/restart de servicios en local para aplicar cambios de sesión (`ms-books-catalogue`, `gateway`, `ms-books-payments`) y validación de estado `Running` en stack.

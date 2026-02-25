@@ -47,3 +47,7 @@ Eliminar mocks del frontend, conectar contra el backend contenerizado y validar 
 - [2026-02-24] Mensajes de error de red mejorados en Home/Detail para diagnosticar `Failed to fetch` cuando backend no está levantado.
 - [2026-02-24] Header integrado con `search-as-you-type` real desde OpenSearch (`/api/books/search/suggest`) con sugerencias en tiempo real.
 - [2026-02-24] `getBooks` ahora aplica fallback por sugerencia cuando una búsqueda tipográfica no retorna resultados directos.
+- [2026-02-25] Diagnóstico end-to-end de inconsistencia portada/título: se confirmó que frontend construye imagen por ISBN desde OpenLibrary y que el desajuste provenía de ISBN antiguos servidos por backend no reiniciado.
+- [2026-02-25] Validación de contrato gateway POST-only mantenido: frontend continúa enviando `POST` con `targetMethod` y el gateway traduce a método real.
+- [2026-02-25] Verificación de integración `payments -> catalogue`: compra de prueba decrementa stock en catálogo (caso validado vía gateway en libro `id=9`, de 14 a 13 unidades).
+- [2026-02-25] Revisión de colección Postman de gateway: continúa compatible con catálogo expandido (uso de variables `book_id`/`payment_id` sin hardcode de tamaño de catálogo).
