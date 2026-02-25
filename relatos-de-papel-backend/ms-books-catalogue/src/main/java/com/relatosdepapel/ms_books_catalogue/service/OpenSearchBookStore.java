@@ -342,14 +342,14 @@ public class OpenSearchBookStore {
     private void syncSeedData() {
         try {
             List<BookResponseDTO> seedBooks = List.of(
-                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes", LocalDate.parse("1605-01-16"), "Clásicos", "9788467028423", 5, true, 15, new BigDecimal("19.99")),
-                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez", LocalDate.parse("1967-05-30"), "Clásicos", "9780307474728", 5, true, 8, new BigDecimal("24.99")),
-                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción", "9780451524935", 5, true, 12, new BigDecimal("18.50")),
-                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"), "Romance", "9780141439518", 4, true, 20, new BigDecimal("16.99")),
-                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"), "Fantasía", "9780618640157", 5, true, 3, new BigDecimal("35.00")),
-                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción", "9780441013593", 5, true, 10, new BigDecimal("28.99")),
-                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos", "9781503280786", 4, false, 5, new BigDecimal("22.00")),
-                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"), "Ficción", "9780156012195", 5, true, 25, new BigDecimal("9.99")));
+                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes", LocalDate.parse("1605-01-16"), "Clásicos", "9788484030300", 5, true, 15, new BigDecimal("19.99")),
+                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez", LocalDate.parse("1967-05-30"), "Clásicos", "9788497592208", 5, true, 8, new BigDecimal("24.99")),
+                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción", "9788499890944", 5, true, 12, new BigDecimal("18.50")),
+                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"), "Romance", "9788469833346", 4, true, 20, new BigDecimal("16.99")),
+                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"), "Fantasía", "9780261102385", 5, true, 3, new BigDecimal("35.00")),
+                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción", "9780441172719", 5, true, 10, new BigDecimal("28.99")),
+                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos", "9780142437247", 4, false, 5, new BigDecimal("22.00")),
+                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"), "Ficción", "9788498381498", 5, true, 25, new BigDecimal("9.99")));
 
             StringBuilder bulk = new StringBuilder();
             for (BookResponseDTO book : seedBooks) {
