@@ -100,9 +100,11 @@ public interface BookService {
      *
      * @param text texto opcional para acotar agregaciones.
      * @param visible filtro opcional por visibilidad.
+     * @param category filtro opcional de categoría.
+     * @param author filtro opcional de autor.
      * @return estructura agregada para filtros de UI.
      */
-    BookFacetsResponseDTO facets(String text, Boolean visible);
+    BookFacetsResponseDTO facets(String text, Boolean visible, String category, String author);
 
     /**
      * Consulta disponibilidad de un libro para flujo de pagos.

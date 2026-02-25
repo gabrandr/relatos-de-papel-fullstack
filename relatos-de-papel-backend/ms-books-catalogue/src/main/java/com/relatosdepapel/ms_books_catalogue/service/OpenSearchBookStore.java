@@ -2,6 +2,7 @@ package com.relatosdepapel.ms_books_catalogue.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ public class OpenSearchBookStore {
     @PostConstruct
     void initialize() {
         ensureIndex();
+        migrateIncompatibleFacetsMappingIfEnabled();
         if (isIndexEmpty()) {
             syncSeedData();
         }
@@ -255,7 +257,7 @@ public class OpenSearchBookStore {
         addAuthorQuery(must, author);
 
         if (category != null && !category.isBlank()) {
-            addTermFilter(filter, "category", category);
+            addCompatibleCategoryFilter(filter, category);
         }
         if (isbn != null && !isbn.isBlank()) {
             addTermFilter(filter, "isbn", isbn);
@@ -284,8 +286,14 @@ public class OpenSearchBookStore {
             query.removeAll();
             query.putObject("match_all");
         }
-
-        return executeSearchAndParse(body);
+        try {
+            return executeSearchAndParse(body);
+        } catch (IllegalStateException ex) {
+            if (isTooManyRequestsMessage(ex.getMessage())) {
+                return List.of();
+            }
+            throw ex;
+        }
     }
 
     /**
@@ -325,7 +333,15 @@ public class OpenSearchBookStore {
         must.add(objectMapper.createObjectNode().set("multi_match", query));
         addTermFilter(filter, "visible", true);
 
-        List<BookResponseDTO> books = executeSearchAndParse(body);
+        List<BookResponseDTO> books;
+        try {
+            books = executeSearchAndParse(body);
+        } catch (IllegalStateException ex) {
+            if (isTooManyRequestsMessage(ex.getMessage())) {
+                return List.of();
+            }
+            throw ex;
+        }
         Set<String> unique = new LinkedHashSet<>();
         String normalizedInput = normalize(text);
         for (BookResponseDTO book : books) {
@@ -352,35 +368,8 @@ public class OpenSearchBookStore {
      * @param visible visibilidad opcional.
      * @return respuesta con total y buckets agregados.
      */
-    public BookFacetsResponseDTO facets(String text, Boolean visible) {
-        ObjectNode body = objectMapper.createObjectNode();
-        body.put("size", 0);
-
-        if ((text != null && !text.isBlank()) || visible != null) {
-            ObjectNode query = body.putObject("query").putObject("bool");
-            ArrayNode must = query.putArray("must");
-            ArrayNode filter = query.putArray("filter");
-
-            if (text != null && !text.isBlank()) {
-                ObjectNode multiMatch = objectMapper.createObjectNode();
-                multiMatch.put("query", text);
-                multiMatch.put("fuzziness", "AUTO");
-                ArrayNode fields = multiMatch.putArray("fields");
-                fields.add("title");
-                fields.add("author");
-                fields.add("category");
-                must.add(objectMapper.createObjectNode().set("multi_match", multiMatch));
-            }
-
-            if (visible != null) {
-                addTermFilter(filter, "visible", visible);
-            }
-        }
-
-        ObjectNode aggs = body.putObject("aggs");
-        aggs.putObject("by_category").putObject("terms").put("field", "category").put("size", 20);
-        aggs.putObject("by_author").putObject("terms").put("field", "author.keyword").put("size", 20);
-
+    public BookFacetsResponseDTO facets(String text, Boolean visible, String category, String author) {
+        ObjectNode body = buildFacetAggregationRequest(text, visible, category, author, true);
         try {
             JsonNode root = executeSearch(body);
             Map<String, Long> categories = parseTermsAgg(root, "by_category");
@@ -388,6 +377,12 @@ public class OpenSearchBookStore {
             long total = root.path("hits").path("total").path("value").asLong(0L);
             return new BookFacetsResponseDTO(total, categories, authors);
         } catch (IOException ex) {
+            if (isTooManyRequests(ex)) {
+                return new BookFacetsResponseDTO(0L, Map.of(), Map.of());
+            }
+            if (isFacetAggregationMappingIssue(ex)) {
+                return facetsFallbackUsingSourceScript(text, visible, category, author, ex);
+            }
             throw fail("Error obteniendo facets", ex);
         }
     }
@@ -409,6 +404,16 @@ public class OpenSearchBookStore {
             throw fail("Error de red validando índice", ex);
         }
 
+        createIndexWithExpectedMapping(properties.getIndex());
+    }
+
+    /**
+     * Construye el mapping canónico del índice de catálogo.
+     * Es usado tanto para creación inicial como para migraciones.
+     *
+     * @return objeto JSON con `mappings.properties`.
+     */
+    private ObjectNode buildIndexMappingDefinition() {
         ObjectNode body = objectMapper.createObjectNode();
         ObjectNode mappings = body.putObject("mappings").putObject("properties");
 
@@ -432,10 +437,18 @@ public class OpenSearchBookStore {
         ObjectNode authorFields = author.putObject("fields");
         authorFields.putObject("keyword").put("type", "keyword");
         authorFields.putObject("suggest").put("type", "search_as_you_type");
+        return body;
+    }
 
+    /**
+     * Crea un índice con el mapping esperado para catálogo.
+     *
+     * @param indexName nombre del índice a crear.
+     */
+    private void createIndexWithExpectedMapping(String indexName) {
         try {
-            Request create = new Request("PUT", "/" + properties.getIndex());
-            create.setJsonEntity(body.toString());
+            Request create = new Request("PUT", "/" + indexName);
+            create.setJsonEntity(buildIndexMappingDefinition().toString());
             restClient.performRequest(create);
         } catch (IOException ex) {
             throw fail("No se pudo crear el índice de OpenSearch", ex);
@@ -574,10 +587,111 @@ public class OpenSearchBookStore {
      * @throws IOException cuando falla llamada de red o parseo.
      */
     private JsonNode executeSearch(ObjectNode body) throws IOException {
-        Request request = new Request("GET", "/" + properties.getIndex() + "/_search");
-        request.setJsonEntity(body.toString());
-        Response response = restClient.performRequest(request);
-        return objectMapper.readTree(response.getEntity().getContent());
+        int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                Request request = new Request("GET", "/" + properties.getIndex() + "/_search");
+                request.setJsonEntity(body.toString());
+                Response response = restClient.performRequest(request);
+                return objectMapper.readTree(response.getEntity().getContent());
+            } catch (ResponseException ex) {
+                if (isTooManyRequests(ex) && attempt < maxAttempts) {
+                    sleepBackoff(attempt);
+                    continue;
+                }
+                throw ex;
+            }
+        }
+        throw new IllegalStateException("Error inesperado ejecutando búsqueda en OpenSearch");
+    }
+
+    /**
+     * Evalúa si está habilitada una migración automática de mapping para facets y, de ser
+     * necesario, ejecuta una reindexación de mantenimiento conservando documentos.
+     */
+    private void migrateIncompatibleFacetsMappingIfEnabled() {
+        if (!properties.isRecreateOnIncompatibleMapping()) {
+            return;
+        }
+        if (!hasIncompatibleFacetsMapping()) {
+            return;
+        }
+
+        String sourceIndex = properties.getIndex();
+        String tempIndex = sourceIndex + "-compat-" + System.currentTimeMillis();
+        try {
+            createIndexWithExpectedMapping(tempIndex);
+            reindex(sourceIndex, tempIndex);
+            deleteIndex(sourceIndex);
+            createIndexWithExpectedMapping(sourceIndex);
+            reindex(tempIndex, sourceIndex);
+            deleteIndex(tempIndex);
+        } catch (Exception ex) {
+            throw fail("No se pudo migrar mapping incompatible de facets", ex);
+        }
+    }
+
+    /**
+     * Detecta incompatibilidad de mapping para aggregations de facets.
+     * Considera incompatible cuando `category` o `author` son `text` sin subcampo `keyword`.
+     *
+     * @return `true` si el índice actual requiere migración.
+     */
+    private boolean hasIncompatibleFacetsMapping() {
+        try {
+            Response response = restClient.performRequest(new Request("GET", "/" + properties.getIndex() + "/_mapping"));
+            JsonNode root = objectMapper.readTree(response.getEntity().getContent());
+            JsonNode propertiesNode = root.path(properties.getIndex()).path("mappings").path("properties");
+
+            JsonNode categoryNode = propertiesNode.path("category");
+            JsonNode authorNode = propertiesNode.path("author");
+
+            boolean categoryIncompatible = "text".equals(categoryNode.path("type").asText())
+                    && categoryNode.path("fields").path("keyword").isMissingNode();
+            boolean authorIncompatible = "text".equals(authorNode.path("type").asText())
+                    && authorNode.path("fields").path("keyword").isMissingNode();
+            return categoryIncompatible || authorIncompatible;
+        } catch (IOException ex) {
+            throw fail("Error validando compatibilidad de mapping de facets", ex);
+        }
+    }
+
+    /**
+     * Ejecuta reindexación entre dos índices.
+     *
+     * @param sourceIndex índice origen.
+     * @param destinationIndex índice destino.
+     */
+    private void reindex(String sourceIndex, String destinationIndex) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.putObject("source").put("index", sourceIndex);
+        body.putObject("dest").put("index", destinationIndex);
+        body.put("conflicts", "proceed");
+        try {
+            Request request = new Request("POST", "/_reindex");
+            request.addParameter("refresh", "true");
+            request.setJsonEntity(body.toString());
+            restClient.performRequest(request);
+        } catch (IOException ex) {
+            throw fail("Error reindexando de " + sourceIndex + " a " + destinationIndex, ex);
+        }
+    }
+
+    /**
+     * Elimina un índice si existe.
+     *
+     * @param indexName índice a eliminar.
+     */
+    private void deleteIndex(String indexName) {
+        try {
+            restClient.performRequest(new Request("DELETE", "/" + indexName));
+        } catch (ResponseException ex) {
+            if (ex.getResponse().getStatusLine().getStatusCode() != HttpStatus.SC_NOT_FOUND) {
+                throw fail("Error eliminando índice " + indexName, ex);
+            }
+        } catch (IOException ex) {
+            throw fail("Error eliminando índice " + indexName, ex);
+        }
     }
 
     /**
@@ -693,6 +807,37 @@ public class OpenSearchBookStore {
     }
 
     /**
+     * Añade un filtro de categoría compatible con índices legacy y nuevos:
+     * intenta `term` sobre `category` y `category.keyword`, además de `match_phrase`
+     * para mappings antiguos donde `category` es `text`.
+     *
+     * @param filter nodo de filtros.
+     * @param category categoría solicitada.
+     */
+    private void addCompatibleCategoryFilter(ArrayNode filter, String category) {
+        if (category == null || category.isBlank()) {
+            return;
+        }
+        ObjectNode boolNode = objectMapper.createObjectNode();
+        ObjectNode bool = boolNode.putObject("bool");
+        ArrayNode should = bool.putArray("should");
+        bool.put("minimum_should_match", 1);
+
+        ObjectNode categoryTerm = objectMapper.createObjectNode();
+        categoryTerm.putObject("category").put("value", category);
+        should.add(objectMapper.createObjectNode().set("term", categoryTerm));
+
+        ObjectNode categoryKeywordTerm = objectMapper.createObjectNode();
+        categoryKeywordTerm.putObject("category.keyword").put("value", category);
+        should.add(objectMapper.createObjectNode().set("term", categoryKeywordTerm));
+
+        ObjectNode matchPhrase = objectMapper.createObjectNode();
+        matchPhrase.putObject("category").put("query", category);
+        should.add(objectMapper.createObjectNode().set("match_phrase", matchPhrase));
+        filter.add(boolNode);
+    }
+
+    /**
      * Añade filtro de rango (`gte`/`lte`) para campo numérico o fecha.
      *
      * @param filter nodo de filtros.
@@ -754,6 +899,220 @@ public class OpenSearchBookStore {
             values.put(bucket.path("key").asText(), bucket.path("doc_count").asLong());
         }
         return values;
+    }
+
+    /**
+     * Construye request de facets usando aggregations por campo.
+     * Para categoría intenta primero `category.keyword` y para autor `author.keyword`.
+     *
+     * @param text texto base opcional.
+     * @param visible visibilidad opcional.
+     * @param useKeywordFields cuando es `true`, usa subcampos `.keyword`.
+     * @return cuerpo JSON para `_search`.
+     */
+    private ObjectNode buildFacetAggregationRequest(
+            String text,
+            Boolean visible,
+            String category,
+            String author,
+            boolean useKeywordFields) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("size", 0);
+        addFacetQuery(body, text, visible, category, author);
+
+        ObjectNode aggs = body.putObject("aggs");
+        String categoryField = useKeywordFields ? "category.keyword" : "category";
+        String authorField = useKeywordFields ? "author.keyword" : "author";
+        aggs.putObject("by_category").putObject("terms").put("field", categoryField).put("size", 20);
+        aggs.putObject("by_author").putObject("terms").put("field", authorField).put("size", 20);
+        return body;
+    }
+
+    /**
+     * Añade filtro base de texto/visibilidad al body de facets.
+     *
+     * @param body cuerpo de consulta en construcción.
+     * @param text texto de consulta opcional.
+     * @param visible filtro de visibilidad opcional.
+     */
+    private void addFacetQuery(ObjectNode body, String text, Boolean visible, String category, String author) {
+        if ((text == null || text.isBlank()) && visible == null
+                && (category == null || category.isBlank())
+                && (author == null || author.isBlank())) {
+            return;
+        }
+        ObjectNode query = body.putObject("query").putObject("bool");
+        ArrayNode must = query.putArray("must");
+        ArrayNode filter = query.putArray("filter");
+
+        if (text != null && !text.isBlank()) {
+            ObjectNode multiMatch = objectMapper.createObjectNode();
+            multiMatch.put("query", text);
+            multiMatch.put("fuzziness", "AUTO");
+            ArrayNode fields = multiMatch.putArray("fields");
+            fields.add("title");
+            fields.add("author");
+            fields.add("category");
+            must.add(objectMapper.createObjectNode().set("multi_match", multiMatch));
+        }
+        if (visible != null) {
+            addTermFilter(filter, "visible", visible);
+        }
+        if (category != null && !category.isBlank()) {
+            addCompatibleCategoryFilter(filter, category);
+        }
+        if (author != null && !author.isBlank()) {
+            addCompatibleAuthorFilter(filter, author);
+        }
+    }
+
+    /**
+     * Ejecuta fallback de facets usando scripts sobre `_source` cuando el mapping del
+     * índice activo no soporta aggregations por campo.
+     *
+     * @param text texto base opcional.
+     * @param visible visibilidad opcional.
+     * @param originalEx excepción que disparó el fallback.
+     * @return respuesta de facets calculada por OpenSearch mediante script.
+     */
+    private BookFacetsResponseDTO facetsFallbackUsingSourceScript(
+            String text,
+            Boolean visible,
+            String category,
+            String author,
+            IOException originalEx) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("size", 0);
+        addFacetQuery(body, text, visible, category, author);
+
+        ObjectNode aggs = body.putObject("aggs");
+        ObjectNode categoryTerms = aggs.putObject("by_category").putObject("terms");
+        categoryTerms.put("size", 20);
+        categoryTerms.putObject("script")
+                .put("lang", "painless")
+                .put("source", "def c = params._source['category']; if (c == null) return null; return c;");
+
+        ObjectNode authorTerms = aggs.putObject("by_author").putObject("terms");
+        authorTerms.put("size", 20);
+        authorTerms.putObject("script")
+                .put("lang", "painless")
+                .put("source", "def a = params._source['author']; if (a == null) return null; return a;");
+
+        try {
+            JsonNode root = executeSearch(body);
+            Map<String, Long> categories = parseTermsAgg(root, "by_category");
+            Map<String, Long> authors = parseTermsAgg(root, "by_author");
+            long total = root.path("hits").path("total").path("value").asLong(0L);
+            return new BookFacetsResponseDTO(total, categories, authors);
+        } catch (IOException fallbackEx) {
+            throw fail("Error obteniendo facets tras fallback de mapping", fallbackEx);
+        }
+    }
+
+    /**
+     * Añade filtro de autor compatible con índices legacy y nuevos:
+     * intenta `term` sobre `author.keyword` y `author`, además de `match_phrase`.
+     *
+     * @param filter nodo de filtros.
+     * @param author autor solicitado.
+     */
+    private void addCompatibleAuthorFilter(ArrayNode filter, String author) {
+        if (author == null || author.isBlank()) {
+            return;
+        }
+        ObjectNode boolNode = objectMapper.createObjectNode();
+        ObjectNode bool = boolNode.putObject("bool");
+        ArrayNode should = bool.putArray("should");
+        bool.put("minimum_should_match", 1);
+
+        ObjectNode authorKeywordTerm = objectMapper.createObjectNode();
+        authorKeywordTerm.putObject("author.keyword").put("value", author);
+        should.add(objectMapper.createObjectNode().set("term", authorKeywordTerm));
+
+        ObjectNode authorTerm = objectMapper.createObjectNode();
+        authorTerm.putObject("author").put("value", author);
+        should.add(objectMapper.createObjectNode().set("term", authorTerm));
+
+        ObjectNode matchPhrase = objectMapper.createObjectNode();
+        matchPhrase.putObject("author").put("query", author);
+        should.add(objectMapper.createObjectNode().set("match_phrase", matchPhrase));
+        filter.add(boolNode);
+    }
+
+    /**
+     * Detecta si una excepción proviene de una incompatibilidad de mapping para aggregations.
+     *
+     * @param ex excepción original.
+     * @return `true` cuando el error corresponde a campos `text` sin soporte de facets.
+     */
+    private boolean isFacetAggregationMappingIssue(IOException ex) {
+        String message = ex.getMessage() == null ? "" : ex.getMessage();
+        if (containsFacetMappingHint(message)) {
+            return true;
+        }
+        if (ex instanceof ResponseException responseException) {
+            try {
+                String responseBody = new String(responseException.getResponse().getEntity().getContent().readAllBytes(),
+                        StandardCharsets.UTF_8);
+                return containsFacetMappingHint(responseBody);
+            } catch (IOException ignored) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Evalúa si una excepción corresponde a límite de concurrencia (HTTP 429).
+     *
+     * @param ex excepción evaluada.
+     * @return `true` cuando la causa es `Too Many Requests`.
+     */
+    private boolean isTooManyRequests(IOException ex) {
+        if (ex instanceof ResponseException responseException) {
+            int code = responseException.getResponse().getStatusLine().getStatusCode();
+            return code == 429;
+        }
+        return isTooManyRequestsMessage(ex.getMessage());
+    }
+
+    /**
+     * Evalúa si un texto contiene la marca de error por límite de concurrencia.
+     *
+     * @param message mensaje de error.
+     * @return `true` si contiene señal de `Too Many Requests`.
+     */
+    private boolean isTooManyRequestsMessage(String message) {
+        String value = message == null ? "" : message.toLowerCase();
+        return value.contains("429 too many requests")
+                || value.contains("concurrent request limit exceeded");
+    }
+
+    /**
+     * Pausa corta de reintento para amortiguar picos de concurrencia contra OpenSearch.
+     *
+     * @param attempt número de intento actual (1..N).
+     */
+    private void sleepBackoff(int attempt) {
+        long delayMs = 120L * attempt;
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Evalúa si un texto contiene pistas típicas de incompatibilidad para aggregations.
+     *
+     * @param text texto a inspeccionar.
+     * @return `true` si contiene indicios de error de fielddata/mapping.
+     */
+    private boolean containsFacetMappingHint(String text) {
+        String value = text == null ? "" : text.toLowerCase();
+        return value.contains("text fields are not optimised")
+                || value.contains("fielddata=true")
+                || value.contains("all shards failed");
     }
 
     /**

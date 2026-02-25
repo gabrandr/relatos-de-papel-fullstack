@@ -224,13 +224,17 @@ public class BookController {
      *
      * @param text texto opcional de búsqueda base.
      * @param visible filtro opcional de visibilidad.
+     * @param category filtro opcional de categoría.
+     * @param author filtro opcional de autor.
      * @return estructura agregada de facets.
      */
     @GetMapping("/search/facets")
     public ResponseEntity<BookFacetsResponseDTO> facets(
             @RequestParam(required = false) String text,
-            @RequestParam(required = false) Boolean visible) {
-        return ResponseEntity.ok(bookService.facets(text, visible));
+            @RequestParam(required = false) Boolean visible,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String author) {
+        return ResponseEntity.ok(bookService.facets(text, visible, category, author));
     }
 
     /**

@@ -95,7 +95,7 @@ const BookDetailPage = () => {
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-background">
         <h2 className="text-2xl font-bold text-text-main mb-4">Libro no encontrado</h2>
         <p className="text-text-muted mb-6">{error || "No existe un libro con ese identificador."}</p>
-        <Link to="/home" className="text-primary hover:underline">
+        <Link to={returnPath} state={returnState} className="text-primary hover:underline">
           Volver al catálogo
         </Link>
       </div>

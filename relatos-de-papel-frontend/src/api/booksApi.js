@@ -44,10 +44,16 @@ const normalizeBook = (book) => ({
  * Obtiene catálogo de libros visibles. Cuando existe `search`, primero intenta full-text
  * y, sin resultados, aplica fallback por sugerencia para corregir términos.
  *
- * @param {{ search?: string }} [params={}] Parámetros de consulta del catálogo.
+ * @param {{ search?: string, category?: string, author?: string }} [params={}] Parámetros de consulta del catálogo.
  * @returns {Promise<Array<Record<string, any>>>} Listado normalizado para render en Home.
  */
-export const getBooks = async ({ search } = {}) => {
+export const getBooks = async ({ search, category, author } = {}) => {
+  const baseFilters = {
+    visible: true,
+    category: category?.trim() || undefined,
+    author: author?.trim() || undefined,
+  };
+
   if (search && search.trim()) {
     const query = search.trim();
     const books = await gatewayRequest({
@@ -55,7 +61,7 @@ export const getBooks = async ({ search } = {}) => {
       targetMethod: "GET",
       queryParams: {
         title: query,
-        visible: true,
+        ...baseFilters,
       },
     });
 
@@ -71,7 +77,7 @@ export const getBooks = async ({ search } = {}) => {
         targetMethod: "GET",
         queryParams: {
           title: suggestions[0],
-          visible: true,
+          ...baseFilters,
         },
       });
       return recovered.map(normalizeBook);
@@ -80,10 +86,19 @@ export const getBooks = async ({ search } = {}) => {
     return [];
   }
 
-  const books = await gatewayRequest({
-    path: "/api/books",
-    targetMethod: "GET",
-  });
+  const hasFacetFilters = Boolean(baseFilters.category || baseFilters.author);
+  const books = hasFacetFilters
+    ? await gatewayRequest({
+        path: "/api/books/search",
+        targetMethod: "GET",
+        queryParams: {
+          ...baseFilters,
+        },
+      })
+    : await gatewayRequest({
+        path: "/api/books",
+        targetMethod: "GET",
+      });
   return books.map(normalizeBook);
 };
 
@@ -122,4 +137,37 @@ export const getBookSuggestions = async (text) => {
     },
   });
   return suggestions;
+};
+
+/**
+ * Obtiene facets de categoría y autor para construir filtros del catálogo.
+ *
+ * @param {{ search?: string, category?: string, author?: string }} [params={}] Parámetros de contexto para facets.
+ * @returns {Promise<{ total: number, categories: Record<string, number>, authors: Record<string, number> }>} Aggregations del backend.
+ */
+export const getBookFacets = async ({ search, category, author } = {}) => {
+  const query = search?.trim();
+  const response = await gatewayRequest({
+    path: "/api/books/search/facets",
+    targetMethod: "GET",
+    queryParams: {
+      visible: true,
+      text: query || undefined,
+      category: category?.trim() || undefined,
+      author: author?.trim() || undefined,
+    },
+  });
+
+  const categories = Object.fromEntries(
+    Object.entries(response?.categories || {}).sort(([, left], [, right]) => right - left)
+  );
+  const authors = Object.fromEntries(
+    Object.entries(response?.authors || {}).sort(([, left], [, right]) => right - left)
+  );
+
+  return {
+    total: Number(response?.total || 0),
+    categories,
+    authors,
+  };
 };

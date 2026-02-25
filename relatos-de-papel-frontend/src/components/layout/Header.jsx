@@ -30,7 +30,9 @@ const Header = () => {
     if (!value) {
       return;
     }
-    navigate(`/home?search=${encodeURIComponent(value)}`);
+    const params = new URLSearchParams(location.search);
+    params.set("search", value);
+    navigate(`/home?${params.toString()}`);
     setShowSuggestions(false);
   };
 
@@ -44,7 +46,9 @@ const Header = () => {
     setSearch(value);
     setSuggestions([]);
     setShowSuggestions(false);
-    navigate(`/home?search=${encodeURIComponent(value)}`);
+    const params = new URLSearchParams(location.search);
+    params.set("search", value);
+    navigate(`/home?${params.toString()}`);
   };
 
   useEffect(() => {
@@ -117,7 +121,10 @@ const Header = () => {
     setSearch("");
     setSuggestions([]);
     setShowSuggestions(false);
-    navigate("/home");
+    const params = new URLSearchParams(location.search);
+    params.delete("search");
+    const nextQuery = params.toString();
+    navigate(nextQuery ? `/home?${nextQuery}` : "/home");
   };
 
   return (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
 import BookCard from "../features/books/BookCard";
-import { getBooks } from "../api/booksApi";
+import { getBookFacets, getBooks } from "../api/booksApi";
 
 /**
  * Página principal de catálogo.
@@ -12,11 +12,15 @@ import { getBooks } from "../api/booksApi";
  */
 const HomePage = () => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
+  const selectedCategory = searchParams.get("category") || "";
+  const selectedAuthor = searchParams.get("author") || "";
   const restoredScrollRef = useRef(false);
 
   const [books, setBooks] = useState([]);
+  const [facets, setFacets] = useState({ total: 0, categories: {}, authors: {} });
+  const [facetsNotice, setFacetsNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -31,10 +35,50 @@ const HomePage = () => {
     const loadBooks = async () => {
       setLoading(true);
       setError("");
+      setFacetsNotice("");
       try {
-        const data = await getBooks({ search });
+        const [booksResult, facetsResult] = await Promise.allSettled([
+          getBooks({
+            search,
+            category: selectedCategory,
+            author: selectedAuthor,
+          }),
+          // Facets se piden una sola vez para reducir carga y evitar picos de concurrencia.
+          getBookFacets({
+            search,
+            category: selectedCategory || undefined,
+            author: selectedAuthor || undefined,
+          }),
+        ]);
+
+        if (booksResult.status !== "fulfilled") {
+          throw booksResult.reason;
+        }
+
         if (active) {
-          setBooks(data);
+          setBooks(booksResult.value);
+          if (facetsResult.status === "fulfilled") {
+            const hasFacetBuckets =
+              Object.keys(facetsResult.value.categories).length > 0 ||
+              Object.keys(facetsResult.value.authors).length > 0;
+            setFacets({
+              total: booksResult.value.length,
+              categories: facetsResult.value.categories,
+              authors: facetsResult.value.authors,
+            });
+            if (!hasFacetBuckets && booksResult.value.length > 0) {
+              setFacetsNotice(
+                "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
+              );
+            }
+          } else if (booksResult.value.length === 0) {
+            // Si no hay resultados visibles, vaciamos facets para evitar opciones obsoletas.
+            setFacets({ total: 0, categories: {}, authors: {} });
+          } else {
+            setFacetsNotice(
+              "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
+            );
+          }
         }
       } catch (err) {
         if (active) {
@@ -58,7 +102,51 @@ const HomePage = () => {
     return () => {
       active = false;
     };
-  }, [search]);
+  }, [search, selectedCategory, selectedAuthor]);
+
+  /**
+   * Limpia filtros de facets y vuelve al listado base de la búsqueda actual.
+   *
+   * @returns {void}
+   */
+  const clearFacetFilters = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("category");
+    nextParams.delete("author");
+    setSearchParams(nextParams);
+  };
+
+  /**
+   * Aplica o limpia el filtro de categoría persistiéndolo en la URL.
+   *
+   * @param {string} value Categoría seleccionada en la UI.
+   * @returns {void}
+   */
+  const handleCategoryChange = (value) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (value) {
+      nextParams.set("category", value);
+    } else {
+      nextParams.delete("category");
+    }
+    setSearchParams(nextParams);
+  };
+
+  /**
+   * Aplica o limpia el filtro de autor persistiéndolo en la URL.
+   *
+   * @param {string} value Autor seleccionado en la UI.
+   * @returns {void}
+   */
+  const handleAuthorChange = (value) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (value) {
+      nextParams.set("author", value);
+    } else {
+      nextParams.delete("author");
+    }
+    setSearchParams(nextParams);
+  };
 
   // Reinicia la bandera cuando cambia la navegación para permitir futuras restauraciones.
   useEffect(() => {
@@ -82,7 +170,63 @@ const HomePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
-      <h1 className="text-3xl font-bold text-text-main mb-6">Catálogo de Libros</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-text-main">Catálogo de Libros</h1>
+          {!loading && !error && (
+            <p className="text-sm text-text-muted mt-1">
+              {facets.total} resultados para la búsqueda actual.
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={clearFacetFilters}
+          className="px-3 py-2 text-sm rounded-md border border-border text-text-body hover:bg-white transition-colors"
+          disabled={!selectedCategory && !selectedAuthor}
+        >
+          Limpiar filtros
+        </button>
+      </div>
+
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+          <label className="flex flex-col gap-1 text-sm text-text-body">
+            Filtrar por categoría
+            <select
+              value={selectedCategory}
+              onChange={(event) => handleCategoryChange(event.target.value)}
+              className="px-3 py-2 border border-border rounded-md bg-white text-text-main"
+              disabled={Object.keys(facets.categories).length === 0}
+            >
+              <option value="">Todas las categorías</option>
+              {Object.entries(facets.categories).map(([name, count]) => (
+                <option key={name} value={name}>
+                  {name} ({count})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm text-text-body">
+            Filtrar por autor
+            <select
+              value={selectedAuthor}
+              onChange={(event) => handleAuthorChange(event.target.value)}
+              className="px-3 py-2 border border-border rounded-md bg-white text-text-main"
+              disabled={Object.keys(facets.authors).length === 0}
+            >
+              <option value="">Todos los autores</option>
+              {Object.entries(facets.authors).map(([name, count]) => (
+                <option key={name} value={name}>
+                  {name} ({count})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+      {!loading && facetsNotice && <p className="text-amber-700 text-sm mb-4">{facetsNotice}</p>}
 
       {loading && <p className="text-text-muted">Cargando libros...</p>}
       {!loading && error && <p className="text-red-600">{error}</p>}

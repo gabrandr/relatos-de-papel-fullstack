@@ -132,8 +132,8 @@ public class BookServiceImpl implements BookService {
      * {@inheritDoc}
      */
     @Override
-    public BookFacetsResponseDTO facets(String text, Boolean visible) {
-        return bookStore.facets(text, visible);
+    public BookFacetsResponseDTO facets(String text, Boolean visible, String category, String author) {
+        return bookStore.facets(text, visible, category, author);
     }
 
     /**
