@@ -80,3 +80,27 @@
 - Estado local de programación: **apto para pasar a fase de despliegue**.
 - Foco recomendado siguiente: resolver C5 (deploy backend/frontend públicos) y cerrar C6 (videomemoria).
 
+## 6) Actualización de estabilidad (2026-02-25, cierre de sesión)
+
+### Problema observado en uso real
+- En picos de interacción de frontend se detectaron casos intermitentes de:
+  - `500` en Home (origen real: `429 Too Many Requests` del proveedor Bonsai/OpenSearch),
+  - aviso de filtros temporales mostrado aun cuando existían opciones útiles.
+
+### Ajustes aplicados
+- Backend (`ms-books-catalogue`):
+  - reintentos con backoff ante `429`,
+  - degradación controlada para evitar escalado a `500`,
+  - caché de facets en memoria con TTL e invalidación por mutación.
+- Frontend (`HomePage` + API):
+  - cancelación de requests obsoletas (`AbortController`),
+  - caché/deduplicación de consultas de facets,
+  - fallback de facets derivadas desde libros cuando facets remoto falla,
+  - aviso de indisponibilidad mostrado solo si no hay buckets utilizables.
+
+### Revalidación técnica posterior
+- `npm run build` (frontend): OK.
+- Rebuild de `ms-books-catalogue`: OK.
+- Smoke test con stack estabilizado:
+  - `POST /api/books`: respuestas `200` consistentes.
+  - `POST /api/books/search/facets`: respuestas `200` consistentes.

@@ -5,6 +5,40 @@ import BookCard from "../features/books/BookCard";
 import { getBookFacets, getBooks } from "../api/booksApi";
 
 /**
+ * Deriva facets locales desde los libros visibles actuales.
+ * Se usa como fallback cuando el endpoint de facets no está disponible.
+ *
+ * @param {Array<Record<string, any>>} books Listado actual del catálogo.
+ * @returns {{ total: number, categories: Record<string, number>, authors: Record<string, number> }} Facets derivados.
+ */
+const deriveFacetsFromBooks = (books) => {
+  const categories = {};
+  const authors = {};
+
+  books.forEach((book) => {
+    if (book?.category) {
+      categories[book.category] = (categories[book.category] || 0) + 1;
+    }
+    if (book?.author) {
+      authors[book.author] = (authors[book.author] || 0) + 1;
+    }
+  });
+
+  const sortedCategories = Object.fromEntries(
+    Object.entries(categories).sort(([, left], [, right]) => right - left)
+  );
+  const sortedAuthors = Object.fromEntries(
+    Object.entries(authors).sort(([, left], [, right]) => right - left)
+  );
+
+  return {
+    total: books.length,
+    categories: sortedCategories,
+    authors: sortedAuthors,
+  };
+};
+
+/**
  * Página principal de catálogo.
  * Soporta búsqueda por query string y restauración de scroll al volver desde detalle.
  *
@@ -26,6 +60,7 @@ const HomePage = () => {
 
   useEffect(() => {
     let active = true;
+    const requestController = new AbortController();
 
     /**
      * Carga libros desde backend aplicando el término de búsqueda actual.
@@ -42,12 +77,14 @@ const HomePage = () => {
             search,
             category: selectedCategory,
             author: selectedAuthor,
+            signal: requestController.signal,
           }),
           // Facets se piden una sola vez para reducir carga y evitar picos de concurrencia.
           getBookFacets({
             search,
             category: selectedCategory || undefined,
             author: selectedAuthor || undefined,
+            signal: requestController.signal,
           }),
         ]);
 
@@ -67,20 +104,37 @@ const HomePage = () => {
               authors: facetsResult.value.authors,
             });
             if (!hasFacetBuckets && booksResult.value.length > 0) {
-              setFacetsNotice(
-                "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
-              );
+              const derivedFacets = deriveFacetsFromBooks(booksResult.value);
+              setFacets(derivedFacets);
+              const hasDerivedBuckets =
+                Object.keys(derivedFacets.categories).length > 0 ||
+                Object.keys(derivedFacets.authors).length > 0;
+              if (!hasDerivedBuckets) {
+                setFacetsNotice(
+                  "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
+                );
+              }
             }
           } else if (booksResult.value.length === 0) {
             // Si no hay resultados visibles, vaciamos facets para evitar opciones obsoletas.
             setFacets({ total: 0, categories: {}, authors: {} });
           } else {
-            setFacetsNotice(
-              "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
-            );
+            const derivedFacets = deriveFacetsFromBooks(booksResult.value);
+            setFacets(derivedFacets);
+            const hasDerivedBuckets =
+              Object.keys(derivedFacets.categories).length > 0 ||
+              Object.keys(derivedFacets.authors).length > 0;
+            if (!hasDerivedBuckets) {
+              setFacetsNotice(
+                "Filtros temporalmente no disponibles. El catálogo sigue operativo; reintenta en unos segundos."
+              );
+            }
           }
         }
       } catch (err) {
+        if (!active || err?.name === "AbortError") {
+          return;
+        }
         if (active) {
           const isNetworkError = err.message === "Failed to fetch";
           setError(
@@ -101,6 +155,7 @@ const HomePage = () => {
 
     return () => {
       active = false;
+      requestController.abort();
     };
   }, [search, selectedCategory, selectedAuthor]);
 

@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpStatus;
@@ -41,10 +42,12 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class OpenSearchBookStore {
+    private static final long FACETS_CACHE_TTL_MS = 30_000L;
 
     private final RestClient restClient;
     private final OpenSearchProperties properties;
     private final ObjectMapper objectMapper;
+    private final Map<String, CacheEntry<BookFacetsResponseDTO>> facetsCache = new ConcurrentHashMap<>();
 
     /**
      * Inicializa el almacenamiento validando índice y cargando seed cuando está vacío.
@@ -146,6 +149,7 @@ public class OpenSearchBookStore {
                 dto.getPrice());
 
         indexBook(book);
+        invalidateFacetsCache();
         return book;
     }
 
@@ -176,6 +180,7 @@ public class OpenSearchBookStore {
                 dto.getPrice());
 
         indexBook(updated);
+        invalidateFacetsCache();
         return updated;
     }
 
@@ -187,6 +192,7 @@ public class OpenSearchBookStore {
      */
     public BookResponseDTO save(BookResponseDTO book) {
         indexBook(book);
+        invalidateFacetsCache();
         return book;
     }
 
@@ -203,6 +209,9 @@ public class OpenSearchBookStore {
             Response response = restClient.performRequest(request);
             JsonNode root = objectMapper.readTree(response.getEntity().getContent());
             String result = root.path("result").asText();
+            if ("deleted".equals(result)) {
+                invalidateFacetsCache();
+            }
             return "deleted".equals(result);
         } catch (ResponseException ex) {
             if (ex.getResponse().getStatusLine().getStatusCode() == HttpStatus.SC_NOT_FOUND) {
@@ -369,19 +378,33 @@ public class OpenSearchBookStore {
      * @return respuesta con total y buckets agregados.
      */
     public BookFacetsResponseDTO facets(String text, Boolean visible, String category, String author) {
+        String cacheKey = buildFacetsCacheKey(text, visible, category, author);
+        BookFacetsResponseDTO cached = readFreshFacetsCache(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         ObjectNode body = buildFacetAggregationRequest(text, visible, category, author, true);
         try {
             JsonNode root = executeSearch(body);
             Map<String, Long> categories = parseTermsAgg(root, "by_category");
             Map<String, Long> authors = parseTermsAgg(root, "by_author");
             long total = root.path("hits").path("total").path("value").asLong(0L);
-            return new BookFacetsResponseDTO(total, categories, authors);
+            BookFacetsResponseDTO response = new BookFacetsResponseDTO(total, categories, authors);
+            writeFacetsCache(cacheKey, response);
+            return response;
         } catch (IOException ex) {
             if (isTooManyRequests(ex)) {
+                BookFacetsResponseDTO stale = readStaleFacetsCache(cacheKey);
+                if (stale != null) {
+                    return stale;
+                }
                 return new BookFacetsResponseDTO(0L, Map.of(), Map.of());
             }
             if (isFacetAggregationMappingIssue(ex)) {
-                return facetsFallbackUsingSourceScript(text, visible, category, author, ex);
+                BookFacetsResponseDTO fallback = facetsFallbackUsingSourceScript(text, visible, category, author, ex);
+                writeFacetsCache(cacheKey, fallback);
+                return fallback;
             }
             throw fail("Error obteniendo facets", ex);
         }
@@ -538,6 +561,7 @@ public class OpenSearchBookStore {
             bulkReq.setEntity(new StringEntity(bulk.toString(), ContentType.create("application/x-ndjson")));
             bulkReq.addParameter("refresh", "true");
             restClient.performRequest(bulkReq);
+            invalidateFacetsCache();
         } catch (IOException ex) {
             throw fail("No se pudo inicializar catálogo en OpenSearch", ex);
         }
@@ -712,6 +736,66 @@ public class OpenSearchBookStore {
         } catch (IOException ex) {
             throw fail("Error ejecutando búsqueda en OpenSearch", ex);
         }
+    }
+
+    /**
+     * Construye una clave de caché determinística para consultas de facets.
+     *
+     * @param text texto de búsqueda.
+     * @param visible visibilidad.
+     * @param category categoría.
+     * @param author autor.
+     * @return clave canónica para caché.
+     */
+    private String buildFacetsCacheKey(String text, Boolean visible, String category, String author) {
+        return normalize(text) + "|" + Objects.toString(visible, "") + "|"
+                + normalize(category) + "|" + normalize(author);
+    }
+
+    /**
+     * Lee un valor vigente de caché de facets.
+     *
+     * @param key clave de consulta.
+     * @return respuesta cacheada si no expiró; `null` en otro caso.
+     */
+    private BookFacetsResponseDTO readFreshFacetsCache(String key) {
+        CacheEntry<BookFacetsResponseDTO> entry = facetsCache.get(key);
+        if (entry == null) {
+            return null;
+        }
+        if (entry.expiresAtMs() < System.currentTimeMillis()) {
+            facetsCache.remove(key);
+            return null;
+        }
+        return entry.value();
+    }
+
+    /**
+     * Lee un valor cacheado aunque esté expirado, útil como fallback ante 429.
+     *
+     * @param key clave de consulta.
+     * @return última respuesta cacheada o `null`.
+     */
+    private BookFacetsResponseDTO readStaleFacetsCache(String key) {
+        CacheEntry<BookFacetsResponseDTO> entry = facetsCache.get(key);
+        return entry == null ? null : entry.value();
+    }
+
+    /**
+     * Guarda respuesta de facets en caché con TTL fijo.
+     *
+     * @param key clave de consulta.
+     * @param value respuesta agregada.
+     */
+    private void writeFacetsCache(String key, BookFacetsResponseDTO value) {
+        facetsCache.put(key, new CacheEntry<>(value, System.currentTimeMillis() + FACETS_CACHE_TTL_MS));
+    }
+
+    /**
+     * Invalida por completo la caché de facets tras mutaciones de catálogo.
+     */
+    private void invalidateFacetsCache() {
+        facetsCache.clear();
     }
 
     /**
@@ -1100,6 +1184,16 @@ public class OpenSearchBookStore {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Entrada de caché en memoria para facets.
+     *
+     * @param <T> tipo de valor cacheado.
+     * @param value valor almacenado.
+     * @param expiresAtMs instante de expiración en epoch millis.
+     */
+    private record CacheEntry<T>(T value, long expiresAtMs) {
     }
 
     /**

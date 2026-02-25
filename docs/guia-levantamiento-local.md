@@ -258,6 +258,12 @@ docker logs -f gateway
 
 - Error de conexión a OpenSearch:
   - revisar `OPENSEARCH_URL`, `OPENSEARCH_USERNAME`, `OPENSEARCH_PASSWORD` en `relatos-de-papel-backend/.env`.
+- `503 Service Unavailable` transitorio desde gateway tras reiniciar servicios:
+  - esperar 20-60 segundos a que Eureka refresque registros y volver a probar.
+  - validar `docker compose -f docker-compose.backend-local.yml ps` y `http://localhost:8761/eureka/apps`.
+- Mensaje frontend: "Filtros temporalmente no disponibles":
+  - suele estar asociado a limitación temporal del proveedor OpenSearch (`429 Too Many Requests`).
+  - el catálogo principal sigue operativo y el frontend aplica fallback local de filtros; reintentar unos segundos después.
 - `ms-books-payments` no levanta:
   - validar que `postgres-payments` esté healthy en `docker compose ps`.
 - Front no conecta al backend:

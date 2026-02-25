@@ -32,15 +32,17 @@ const normalizeQueryParams = (queryParams = {}) => {
  * @param {"GET" | "POST" | "PUT" | "PATCH" | "DELETE"} request.targetMethod Método HTTP real que debe aplicar el gateway.
  * @param {Record<string, string | number | boolean | Array<string | number | boolean> | null | undefined>} [request.queryParams] Query params de la operación real.
  * @param {unknown} [request.body] Body de la operación real.
+ * @param {AbortSignal} [request.signal] Señal opcional para cancelar la petición HTTP.
  * @returns {Promise<any>} Payload parseado (JSON o fallback con `message`).
  * @throws {Error} Error funcional cuando el backend responde estado no exitoso.
  */
-export const gatewayRequest = async ({ path, targetMethod, queryParams, body }) => {
+export const gatewayRequest = async ({ path, targetMethod, queryParams, body, signal }) => {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
+    signal,
     body: JSON.stringify({
       targetMethod,
       queryParams: normalizeQueryParams(queryParams),

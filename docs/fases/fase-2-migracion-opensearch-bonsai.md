@@ -67,3 +67,7 @@ Migrar `ms-books-catalogue` desde búsqueda relacional (JPA Specifications) a Op
 - [2026-02-25] Expansión de catálogo base con 20 libros adicionales (IDs 9-28), todos con ISBN validados y portada disponible.
 - [2026-02-25] Estrategia de seed ajustada: `initialize()` ahora ejecuta `syncSeedData()` solo si `isIndexEmpty()` (`GET /{index}/_count == 0`) para evitar reindexación total en cada arranque.
 - [2026-02-25] Verificación por gateway de catálogo resultante: 28 registros totales en índice y 27 visibles en listados (`visible=true` por defecto en `findAllVisible`).
+- [2026-02-25] Robustez de facets para índices legacy: fallback por script sobre `_source` cuando el mapping existente no soporta aggregations por campo.
+- [2026-02-25] Extensión de `GET /api/books/search/facets` para aceptar `category` y `author`, habilitando facets dependientes (intersección de filtros) en frontend.
+- [2026-02-25] Hardening frente a rate-limit de Bonsai/OpenSearch (`429`): reintentos con backoff en `_search` y degradación controlada para no elevar fallos temporales a errores funcionales en catálogo/suggest/facets.
+- [2026-02-25] Caché en memoria de facets con TTL + invalidación ante mutaciones de catálogo (`create/update/save/delete`) para reducir presión de consultas repetidas al cluster.

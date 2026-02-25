@@ -57,3 +57,8 @@ Eliminar mocks del frontend, conectar contra el backend contenerizado y validar 
 - [2026-02-25] Mejora post-compra: `OrderConfirmationPage` incorpora contador regresivo de 5 segundos reutilizando `useCountdown` para redirección automática a `/home`, conservando acción manual "Volver a la tienda".
 - [2026-02-25] Robustez de countdown: `useCountdown` actualizado para evitar callbacks duplicados y prevenir dobles redirecciones cuando coincide click manual con auto-redirección.
 - [2026-02-25] Validación frontend posterior a mejoras UX: `npm run build` ejecuta correctamente en `relatos-de-papel-frontend`.
+- [2026-02-25] Filtros de Home persistidos en `query params` (`search`, `category`, `author`) para mantener contexto al navegar atrás/adelante y volver desde detalle.
+- [2026-02-25] Integración de facets dependientes en UI: al seleccionar categoría se acotan autores, y al seleccionar autor se acotan categorías usando `GET /api/books/search/facets` con filtros cruzados.
+- [2026-02-25] Resiliencia frontend ante fallos temporales de facets: `AbortController` para cancelar requests obsoletas, cache local con TTL, deduplicación de requests en vuelo y fallback de facets derivadas desde libros ya cargados.
+- [2026-02-25] Ajuste UX del aviso de indisponibilidad de filtros: ahora solo se muestra cuando realmente no hay buckets utilizables (ni desde backend ni desde fallback local).
+- [2026-02-25] Validación de estabilidad local posterior a hardening: `npm run build` OK y smoke tests repetidos sobre gateway con respuestas `200` en `POST /api/books` y `POST /api/books/search/facets` tras estabilizar servicios.
