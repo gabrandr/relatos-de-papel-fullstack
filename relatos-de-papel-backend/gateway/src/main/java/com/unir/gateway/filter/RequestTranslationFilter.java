@@ -51,17 +51,25 @@ public class RequestTranslationFilter implements GlobalFilter {
     public Mono<Void> filter(
             ServerWebExchange exchange,
             GatewayFilterChain chain) {
+        HttpMethod method = exchange.getRequest().getMethod();
 
-        // By default, set the response status to 400. This will be overridden if the
-        // request is valid.
-        exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+        if (HttpMethod.OPTIONS.equals(method)) {
+            return chain.filter(exchange);
+        }
 
-        // Simple check to see if the request has a content type and is a POST request
-        if (exchange.getRequest().getHeaders().getContentType() == null
-                || !exchange.getRequest().getMethod().equals(HttpMethod.POST)) {
-            log.info("Request does not have a content type or is not a POST request");
+        if (!HttpMethod.POST.equals(method)) {
+            exchange.getResponse().setStatusCode(HttpStatus.METHOD_NOT_ALLOWED);
+            log.info("Non-POST request blocked by gateway translation filter: {}", method);
             return exchange.getResponse().setComplete();
-        } else {
+        }
+
+        if (exchange.getRequest().getHeaders().getContentType() == null) {
+            exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+            log.info("POST request without content type");
+            return exchange.getResponse().setComplete();
+        }
+
+        {
             return DataBufferUtils.join(exchange.getRequest().getBody())
                     .flatMap(dataBuffer -> {
                         GatewayRequest request = requestBodyExtractor.getRequest(exchange, dataBuffer);

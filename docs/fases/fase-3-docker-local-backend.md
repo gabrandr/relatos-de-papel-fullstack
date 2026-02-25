@@ -46,3 +46,4 @@ Crear imágenes Docker para los servicios backend y orquestarlos localmente.
 - [2026-02-24] Se creó `docker-compose.backend-local.yml` con stack completo: `eureka-server`, `gateway`, `ms-books-catalogue`, `ms-books-payments`, `postgres-payments`.
 - [2026-02-24] Se creó `.env.example` con variables `OPENSEARCH_*`.
 - [2026-02-24] Validación de sintaxis compose ejecutada: `docker compose -f docker-compose.backend-local.yml config`.
+- [2026-02-24] Guía local ampliada con instrucciones para importar colección Postman de pruebas backend.

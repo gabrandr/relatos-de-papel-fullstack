@@ -58,3 +58,7 @@ Migrar `ms-books-catalogue` desde búsqueda relacional (JPA Specifications) a Op
 - [2026-02-24] `ms-books-catalogue/src/main/java/.../controller/BookController.java`: nuevos endpoints `GET /api/books/search/suggest` y `GET /api/books/search/facets`.
 - [2026-02-24] Se retiró la capa JPA residual del catálogo (`entity`, `repository`, `specification`, `utils/Consts`) para evitar dependencia relacional en el buscador.
 - [2026-02-24] Credenciales de Bonsai recibidas del equipo y preparadas para uso por variables de entorno (sin hardcode en repositorio).
+- [2026-02-24] Ajuste de relevancia de búsqueda: `title` ahora usa prefijo sobre campos `search_as_you_type` (menos ruido en resultados).
+- [2026-02-24] Ajuste de sugerencias: filtrado de resultados visibles y pertinencia textual para evitar sugerencias no relacionadas.
+- [2026-02-24] Corrección de ISBN semilla para mejorar resolución de portadas por OpenLibrary.
+- [2026-02-24] La semilla pasó de \"solo si índice vacío\" a sincronización de catálogo base para corregir datos existentes en el índice.

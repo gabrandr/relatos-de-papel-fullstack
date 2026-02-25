@@ -13,6 +13,7 @@ const BookDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const [imageSrc, setImageSrc] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -24,10 +25,16 @@ const BookDetailPage = () => {
         const data = await getBookById(id);
         if (active) {
           setBook(data);
+          setImageSrc(data.image);
         }
       } catch (err) {
         if (active) {
-          setError(err.message || "No se pudo cargar el libro");
+          const isNetworkError = err.message === "Failed to fetch";
+          setError(
+            isNetworkError
+              ? "No hay conexión con el backend. Verifica que gateway y microservicios estén levantados."
+              : err.message || "No se pudo cargar el libro"
+          );
           setBook(null);
         }
       } finally {
@@ -85,9 +92,10 @@ const BookDetailPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="flex justify-center items-start">
             <img
-              src={book.image}
+              src={imageSrc}
               alt={book.title}
               className="w-full max-w-sm h-auto object-contain rounded-lg shadow-xl border-4 border-white transform hover:scale-[1.02] transition-transform duration-500"
+              onError={() => setImageSrc(book.imageFallback || "/book-placeholder.svg")}
             />
           </div>
 

@@ -1,0 +1,268 @@
+{
+  "info": {
+    "name": "Relatos de Papel - Backend Gateway (OpenSearch + Payments)",
+    "_postman_id": "f0f842f4-0c9c-4ad4-9097-activity3-relatos",
+    "description": "Colección para probar backend vía Gateway POST-only con targetMethod. Incluye pruebas de catálogo OpenSearch (search, suggest, facets) y payments.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Catalogo OpenSearch",
+      "item": [
+        {
+          "name": "Books - List visible",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Search by title",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"title\": [\"quijote\"],\n    \"visible\": [\"true\"]\n  },\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Suggest",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search/suggest",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search", "suggest"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"text\": [\"qui\"],\n    \"size\": [\"8\"]\n  },\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Facets",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books/search/facets",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "search", "facets"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"visible\": [\"true\"]\n  },\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Get by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books/{{book_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "{{book_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"title\": \"Clean Architecture\",\n    \"author\": \"Robert C. Martin\",\n    \"publicationDate\": \"2017-09-20\",\n    \"category\": \"Software\",\n    \"isbn\": \"9780134494166\",\n    \"rating\": 5,\n    \"visible\": true,\n    \"stock\": 12,\n    \"price\": 42.90\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Books - Update stock",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/books/{{book_id}}/stock",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "books", "{{book_id}}", "stock"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"quantity\": -1\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Payments",
+      "item": [
+        {
+          "name": "Payments - Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"POST\",\n  \"queryParams\": {},\n  \"body\": {\n    \"userId\": 1,\n    \"bookId\": {{book_id}},\n    \"quantity\": 1\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Payments - Get all",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Payments - Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/search",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "search"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {\n    \"userId\": [\"1\"]\n  },\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Payments - Get by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"GET\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Payments - Update status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"PATCH\",\n  \"queryParams\": {},\n  \"body\": {\n    \"status\": \"COMPLETED\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Payments - Cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/api/payments/{{payment_id}}",
+              "host": ["{{gateway_url}}"],
+              "path": ["api", "payments", "{{payment_id}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMethod\": \"DELETE\",\n  \"queryParams\": {},\n  \"body\": null\n}"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:8762"
+    },
+    {
+      "key": "book_id",
+      "value": "1"
+    },
+    {
+      "key": "payment_id",
+      "value": "1"
+    }
+  ]
+}

@@ -43,3 +43,7 @@ Eliminar mocks del frontend, conectar contra el backend contenerizado y validar 
 - [2026-02-24] `OrderConfirmationPage` ajustada para mostrar referencia basada en IDs de pago reales.
 - [2026-02-24] Añadido `.env.example` en frontend con `VITE_API_BASE_URL`.
 - [2026-02-24] Validación frontend: `npm run build` ejecuta correctamente en `relatos-de-papel-frontend`.
+- [2026-02-24] Estrategia de imágenes aplicada: portada por ISBN (`OpenLibrary`) + fallback local `/book-placeholder.svg`.
+- [2026-02-24] Mensajes de error de red mejorados en Home/Detail para diagnosticar `Failed to fetch` cuando backend no está levantado.
+- [2026-02-24] Header integrado con `search-as-you-type` real desde OpenSearch (`/api/books/search/suggest`) con sugerencias en tiempo real.
+- [2026-02-24] `getBooks` ahora aplica fallback por sugerencia cuando una búsqueda tipográfica no retorna resultados directos.

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { useCartStore } from "../../store/useCartStore";
+import { getBookSuggestions } from "../../api/booksApi";
 
 /**
  * Encabezado con logo, buscador y carrito.
@@ -11,12 +12,65 @@ const Header = () => {
   const navigate = useNavigate(); //navegador
   const cartCount = useCartStore((state) => state.getTotalItems()); //cantidad total de items en carrito
   const [search, setSearch] = useState(""); //estado para el buscador
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const wrapperRef = useRef(null);
 
   //funcion para buscar
   const handleSearch = (e) => {
     e.preventDefault(); //prevenir el comportamiento por defecto del formulario
-    navigate(`/home?search=${encodeURIComponent(search)}`); //navegar a la pagina de home con el query param search
-    setSearch(""); //limpiar el buscador
+    const value = search.trim();
+    if (!value) {
+      return;
+    }
+    navigate(`/home?search=${encodeURIComponent(value)}`); //navegar a la pagina de home con el query param search
+    setShowSuggestions(false);
+  };
+
+  const handleSuggestionSelect = (value) => {
+    setSearch(value);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    navigate(`/home?search=${encodeURIComponent(value)}`);
+  };
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const values = await getBookSuggestions(search);
+        setSuggestions(values);
+        setShowSuggestions(values.length > 0);
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  const handleInputChange = (value) => {
+    setSearch(value);
+    if (!value.trim()) {
+      setShowSuggestions(false);
+    }
   };
 
   return (
@@ -30,15 +84,33 @@ const Header = () => {
           </span>
         </Link>
         {/* buscador */}
-        <form onSubmit={handleSearch} className="grow max-w-2xl">
-          <input
-            type="text"
-            placeholder="Buscar por título"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </form>
+        <div ref={wrapperRef} className="grow max-w-2xl relative">
+          <form onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="Buscar por título"
+              value={search}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => setShowSuggestions(suggestions.length > 0)}
+              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </form>
+
+          {showSuggestions && (
+            <div className="absolute top-12 left-0 right-0 bg-white border border-border rounded-lg shadow-md z-50">
+              {suggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => handleSuggestionSelect(suggestion)}
+                  className="w-full text-left px-4 py-2 hover:bg-background text-text-body"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {/* carrito */}
         <Link to="/cart" className="relative">
           <span className="text-2xl">🛒</span>

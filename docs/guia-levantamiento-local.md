@@ -78,7 +78,40 @@ Deberías ver registrados al menos:
 
 El gateway **solo recibe `POST`** y el método real va en `targetMethod`.
 
+### 5.4. Verificación explícita de restricción POST-only (recomendado para evidencia)
+
+Probar método directo `GET` al gateway:
+
+```bash
+curl -i http://localhost:8762/api/books
+```
+
+Resultado esperado: `405 Method Not Allowed`.
+
+Probar preflight CORS (`OPTIONS`):
+
+```bash
+curl -i -X OPTIONS http://localhost:8762/api/books
+```
+
+Resultado esperado: respuesta de preflight (el gateway no ejecuta lógica de negocio por `OPTIONS`).
+
 ## 6. Pruebas rápidas por API (vía Gateway)
+
+Antes de ejecutar pruebas manuales, importa la colección:
+
+- Archivo: `docs/postman/Relatos-Backend-Gateway.postman_collection.json`
+- En Postman: `Import` -> selecciona el JSON.
+- Variables de colección:
+  - `gateway_url` = `http://localhost:8762`
+  - `book_id` = `1` (o el libro que quieras probar)
+  - `payment_id` = `1` (actualízalo según resultados)
+
+Recomendación: usar primero la carpeta **01 - Catalogo OpenSearch** y luego **02 - Payments**.
+
+Adicionalmente, en frontend el buscador del header está conectado a `search_as_you_type` del cluster vía endpoint:
+
+- `POST /api/books/search/suggest` con `targetMethod=GET`
 
 ### 6.1. Listar libros visibles
 

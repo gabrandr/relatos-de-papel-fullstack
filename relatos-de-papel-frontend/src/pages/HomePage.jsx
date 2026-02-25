@@ -25,7 +25,12 @@ const HomePage = () => {
         }
       } catch (err) {
         if (active) {
-          setError(err.message || "No se pudo cargar el catálogo");
+          const isNetworkError = err.message === "Failed to fetch";
+          setError(
+            isNetworkError
+              ? "No hay conexión con el backend. Levanta gateway y microservicios antes de usar el frontend."
+              : err.message || "No se pudo cargar el catálogo"
+          );
           setBooks([]);
         }
       } finally {

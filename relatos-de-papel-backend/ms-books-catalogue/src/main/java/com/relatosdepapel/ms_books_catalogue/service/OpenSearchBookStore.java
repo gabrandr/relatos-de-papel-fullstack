@@ -2,6 +2,7 @@ package com.relatosdepapel.ms_books_catalogue.service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,7 +44,7 @@ public class OpenSearchBookStore {
     @PostConstruct
     void initialize() {
         ensureIndex();
-        seedDataIfEmpty();
+        syncSeedData();
     }
 
     public List<BookResponseDTO> findAllVisible() {
@@ -164,8 +165,8 @@ public class OpenSearchBookStore {
         ArrayNode must = bool.putArray("must");
         ArrayNode filter = bool.putArray("filter");
 
-        addMatchQuery(must, "title", title);
-        addMatchQuery(must, "author", author);
+        addTitleQuery(must, title);
+        addAuthorQuery(must, author);
 
         if (category != null && !category.isBlank()) {
             addTermFilter(filter, "category", category);
@@ -209,9 +210,14 @@ public class OpenSearchBookStore {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("size", size);
 
-        ObjectNode query = body.putObject("query").putObject("multi_match");
-        query.put("query", text);
+        ObjectNode bool = body.putObject("query").putObject("bool");
+        ArrayNode must = bool.putArray("must");
+        ArrayNode filter = bool.putArray("filter");
+
+        ObjectNode query = objectMapper.createObjectNode();
+        query.put("query", text.trim());
         query.put("type", "bool_prefix");
+        query.put("operator", "and");
 
         ArrayNode fields = query.putArray("fields");
         fields.add("title");
@@ -223,12 +229,22 @@ public class OpenSearchBookStore {
         fields.add("author.suggest._2gram");
         fields.add("author.suggest._3gram");
 
+        must.add(objectMapper.createObjectNode().set("multi_match", query));
+        addTermFilter(filter, "visible", true);
+
         List<BookResponseDTO> books = executeSearchAndParse(body);
         Set<String> unique = new LinkedHashSet<>();
+        String normalizedInput = normalize(text);
         for (BookResponseDTO book : books) {
-            if (book.getTitle() != null) {
-                unique.add(book.getTitle());
+            String title = book.getTitle();
+            if (title == null) {
+                continue;
             }
+            String normalizedTitle = normalize(title);
+            if (!normalizedTitle.contains(normalizedInput) && !normalizedInput.contains(normalizedTitle)) {
+                continue;
+            }
+            unique.add(title);
             if (unique.size() >= size) {
                 break;
             }
@@ -323,25 +339,17 @@ public class OpenSearchBookStore {
         }
     }
 
-    private void seedDataIfEmpty() {
+    private void syncSeedData() {
         try {
-            Request countReq = new Request("GET", "/" + properties.getIndex() + "/_count");
-            Response countResp = restClient.performRequest(countReq);
-            JsonNode countRoot = objectMapper.readTree(countResp.getEntity().getContent());
-            long count = countRoot.path("count").asLong(0L);
-            if (count > 0) {
-                return;
-            }
-
             List<BookResponseDTO> seedBooks = List.of(
-                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes", LocalDate.parse("1605-01-16"), "Clásicos", "9788467033601", 5, true, 15, new BigDecimal("19.99")),
-                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez", LocalDate.parse("1967-05-30"), "Clásicos", "9788497592208", 5, true, 8, new BigDecimal("24.99")),
-                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción", "9788499890944", 5, true, 12, new BigDecimal("18.50")),
-                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"), "Romance", "9788491050407", 4, true, 20, new BigDecimal("16.99")),
-                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"), "Fantasía", "9788445077528", 5, true, 3, new BigDecimal("35.00")),
-                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción", "9788497593786", 5, true, 10, new BigDecimal("28.99")),
-                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos", "9788490019238", 4, false, 5, new BigDecimal("22.00")),
-                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"), "Ficción", "9788498381498", 5, true, 25, new BigDecimal("9.99")));
+                    new BookResponseDTO(1L, "Don Quijote de la Mancha", "Miguel de Cervantes", LocalDate.parse("1605-01-16"), "Clásicos", "9788467028423", 5, true, 15, new BigDecimal("19.99")),
+                    new BookResponseDTO(2L, "Cien Años de Soledad", "Gabriel García Márquez", LocalDate.parse("1967-05-30"), "Clásicos", "9780307474728", 5, true, 8, new BigDecimal("24.99")),
+                    new BookResponseDTO(3L, "1984", "George Orwell", LocalDate.parse("1949-06-08"), "Ficción", "9780451524935", 5, true, 12, new BigDecimal("18.50")),
+                    new BookResponseDTO(4L, "Orgullo y Prejuicio", "Jane Austen", LocalDate.parse("1813-01-28"), "Romance", "9780141439518", 4, true, 20, new BigDecimal("16.99")),
+                    new BookResponseDTO(5L, "El Señor de los Anillos", "J.R.R. Tolkien", LocalDate.parse("1954-07-29"), "Fantasía", "9780618640157", 5, true, 3, new BigDecimal("35.00")),
+                    new BookResponseDTO(6L, "Dune", "Frank Herbert", LocalDate.parse("1965-08-01"), "Ciencia Ficción", "9780441013593", 5, true, 10, new BigDecimal("28.99")),
+                    new BookResponseDTO(7L, "Moby Dick", "Herman Melville", LocalDate.parse("1851-10-18"), "Clásicos", "9781503280786", 4, false, 5, new BigDecimal("22.00")),
+                    new BookResponseDTO(8L, "El Principito", "Antoine de Saint-Exupéry", LocalDate.parse("1943-04-06"), "Ficción", "9780156012195", 5, true, 25, new BigDecimal("9.99")));
 
             StringBuilder bulk = new StringBuilder();
             for (BookResponseDTO book : seedBooks) {
@@ -432,15 +440,30 @@ public class OpenSearchBookStore {
                 price);
     }
 
-    private void addMatchQuery(ArrayNode must, String field, String value) {
+    private void addTitleQuery(ArrayNode must, String value) {
         if (value == null || value.isBlank()) {
             return;
         }
-        ObjectNode match = objectMapper.createObjectNode();
-        ObjectNode matchField = match.putObject(field);
-        matchField.put("query", value);
-        matchField.put("fuzziness", "AUTO");
-        must.add(objectMapper.createObjectNode().set("match", match));
+        ObjectNode multiMatch = objectMapper.createObjectNode();
+        multiMatch.put("query", value.trim());
+        multiMatch.put("type", "bool_prefix");
+        multiMatch.put("operator", "and");
+        ArrayNode fields = multiMatch.putArray("fields");
+        fields.add("title");
+        fields.add("title.suggest");
+        fields.add("title.suggest._2gram");
+        fields.add("title.suggest._3gram");
+        must.add(objectMapper.createObjectNode().set("multi_match", multiMatch));
+    }
+
+    private void addAuthorQuery(ArrayNode must, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        ObjectNode phrasePrefix = objectMapper.createObjectNode();
+        phrasePrefix.putObject("author")
+                .put("query", value.trim());
+        must.add(objectMapper.createObjectNode().set("match_phrase_prefix", phrasePrefix));
     }
 
     private void addTermFilter(ArrayNode filter, String field, Object value) {
@@ -505,5 +528,10 @@ public class OpenSearchBookStore {
 
     private RuntimeException fail(String message, Exception ex) {
         return new IllegalStateException(message + ": " + ex.getMessage(), ex);
+    }
+
+    private String normalize(String input) {
+        String normalized = Normalizer.normalize(input == null ? "" : input, Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{M}", "").toLowerCase().trim();
     }
 }
