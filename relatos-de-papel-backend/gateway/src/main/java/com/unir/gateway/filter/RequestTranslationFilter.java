@@ -17,14 +17,8 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * This class is a custom filter for the Spring Cloud Gateway. It is responsible
- * for translating incoming requests.
- * It uses the RequestBodyExtractor to extract the body of the request and the
- * RequestDecoratorFactory to create a decorator for the request.
- * The decorator is used to modify the request before it is forwarded to the
- * downstream service.
- * By default, the response status is set to 400 (Bad Request). This will be
- * overridden if the request is valid.
+ * Filtro global que aplica el contrato de gateway `POST + targetMethod`.
+ * Traduce la petición entrante en una petición mutada hacia el microservicio destino.
  */
 @Component
 @RequiredArgsConstructor
@@ -35,17 +29,13 @@ public class RequestTranslationFilter implements GlobalFilter {
     private final RequestDecoratorFactory requestDecoratorFactory;
 
     /**
-     * This method is the main filter method for the Spring Cloud Gateway.
-     * It checks if the incoming request has a content type and is a POST request.
-     * If the request does have a content type and is a POST request, the body of
-     * the request is joined into a single DataBuffer.
-     * Then, the request is mutated using the decorator before being forwarded.
-     * By default, the response status is set to 400 (Bad Request). This will be
-     * overridden if the request is valid.
+     * Valida y traduce la petición HTTP antes de enrutarla.
+     * Permite `OPTIONS` para preflight CORS, bloquea métodos distintos de `POST`
+     * y transforma el body JSON en una request mutada con método y path finales.
      *
-     * @param exchange the current server web exchange
-     * @param chain    the gateway filter chain
-     * @return a Mono<Void> that indicates when request handling is complete
+     * @param exchange intercambio HTTP reactivo actual.
+     * @param chain cadena de filtros del gateway.
+     * @return señal reactiva de finalización de la petición.
      */
     @Override
     public Mono<Void> filter(
@@ -69,21 +59,19 @@ public class RequestTranslationFilter implements GlobalFilter {
             return exchange.getResponse().setComplete();
         }
 
-        {
-            return DataBufferUtils.join(exchange.getRequest().getBody())
-                    .flatMap(dataBuffer -> {
-                        GatewayRequest request = requestBodyExtractor.getRequest(exchange, dataBuffer);
-                        ServerHttpRequest mutatedRequest = requestDecoratorFactory.getDecorator(request);
-                        // RouteToRequestUrlFilter writes the URI to the exchange attributes *before*
-                        // any global filters run.
-                        exchange.getAttributes().put(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR,
-                                mutatedRequest.getURI());
-                        if (request.getQueryParams() != null) {
-                            request.getQueryParams().clear();
-                        }
-                        log.info("Proxying request: {} {}", mutatedRequest.getMethod(), mutatedRequest.getURI());
-                        return chain.filter(exchange.mutate().request(mutatedRequest).build());
-                    });
-        }
+        return DataBufferUtils.join(exchange.getRequest().getBody())
+                .flatMap(dataBuffer -> {
+                    GatewayRequest request = requestBodyExtractor.getRequest(exchange, dataBuffer);
+                    ServerHttpRequest mutatedRequest = requestDecoratorFactory.getDecorator(request);
+                    // RouteToRequestUrlFilter calcula la URL antes de este filtro global.
+                    // Sobrescribir este atributo garantiza que se use la URI mutada.
+                    exchange.getAttributes().put(ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR,
+                            mutatedRequest.getURI());
+                    if (request.getQueryParams() != null) {
+                        request.getQueryParams().clear();
+                    }
+                    log.info("Proxying request: {} {}", mutatedRequest.getMethod(), mutatedRequest.getURI());
+                    return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                });
     }
 }

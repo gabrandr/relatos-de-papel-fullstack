@@ -28,17 +28,32 @@ import com.relatosdepapel.ms_books_catalogue.service.BookService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Controlador REST del catálogo de libros.
+ * Expone operaciones CRUD, búsqueda, sugerencias, facets y stock.
+ */
 @RestController
 @RequestMapping("/api/books")
 @RequiredArgsConstructor
 public class BookController {
     private final BookService bookService;
 
+    /**
+     * Lista los libros visibles del catálogo.
+     *
+     * @return listado de libros publicados.
+     */
     @GetMapping
     public ResponseEntity<List<BookResponseDTO>> getAllBooks() {
         return ResponseEntity.ok(bookService.getAll());
     }
 
+    /**
+     * Obtiene detalle de libro por identificador.
+     *
+     * @param id identificador de libro.
+     * @return libro encontrado o 404 si no existe.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<BookResponseDTO> getBookById(@PathVariable Long id) {
         BookResponseDTO book = bookService.getById(id);
@@ -48,6 +63,12 @@ public class BookController {
         return ResponseEntity.ok(book);
     }
 
+    /**
+     * Crea un libro nuevo tras validar campos obligatorios y reglas básicas de negocio.
+     *
+     * @param dto payload de creación.
+     * @return libro creado (201), error de validación (400) o conflicto de ISBN (409).
+     */
     @PostMapping
     public ResponseEntity<?> createBook(@RequestBody BookRequestDTO dto) {
         if (dto.getTitle() == null || dto.getTitle().isEmpty()) {
@@ -74,6 +95,13 @@ public class BookController {
         }
     }
 
+    /**
+     * Actualiza un libro completo por id.
+     *
+     * @param id identificador de libro.
+     * @param dto payload de actualización.
+     * @return libro actualizado, 404 si no existe o 400 ante datos inválidos.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateBook(@PathVariable Long id, @RequestBody BookRequestDTO dto) {
         if (dto.getTitle() == null || dto.getTitle().isEmpty()) {
@@ -99,6 +127,13 @@ public class BookController {
         return ResponseEntity.ok(updatedBook);
     }
 
+    /**
+     * Actualiza parcialmente un libro.
+     *
+     * @param id identificador de libro.
+     * @param dto campos parciales a actualizar.
+     * @return libro actualizado o 404 si no existe.
+     */
     @PatchMapping("/{id}")
     public ResponseEntity<BookResponseDTO> patchBook(@PathVariable Long id, @RequestBody BookPatchDTO dto) {
         BookResponseDTO updatedBook = bookService.patch(id, dto);
@@ -108,6 +143,12 @@ public class BookController {
         return ResponseEntity.ok(updatedBook);
     }
 
+    /**
+     * Elimina un libro por id.
+     *
+     * @param id identificador de libro.
+     * @return 204 si se elimina o 404 si no existe.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         boolean deleted = bookService.delete(id);
@@ -117,6 +158,23 @@ public class BookController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Ejecuta búsqueda compuesta de catálogo con filtros opcionales.
+     *
+     * @param title texto para título.
+     * @param author texto para autor.
+     * @param category categoría exacta.
+     * @param isbn isbn exacto.
+     * @param ratingMin rating mínimo.
+     * @param ratingMax rating máximo.
+     * @param visible filtro de visibilidad.
+     * @param minPrice precio mínimo.
+     * @param maxPrice precio máximo.
+     * @param publicationDateFrom fecha de publicación inicial.
+     * @param publicationDateTo fecha de publicación final.
+     * @param minStock stock mínimo.
+     * @return listado de resultados.
+     */
     @GetMapping("/search")
     public ResponseEntity<List<BookResponseDTO>> searchBooks(
             @RequestParam(required = false) String title,
@@ -148,12 +206,26 @@ public class BookController {
         return ResponseEntity.ok(results);
     }
 
+    /**
+     * Retorna sugerencias de autocompletado para el buscador del frontend.
+     *
+     * @param text texto parcial ingresado por el usuario.
+     * @param size tamaño máximo opcional de respuesta.
+     * @return lista de sugerencias.
+     */
     @GetMapping("/search/suggest")
     public ResponseEntity<List<String>> suggest(@RequestParam String text,
             @RequestParam(required = false) Integer size) {
         return ResponseEntity.ok(bookService.suggest(text, size));
     }
 
+    /**
+     * Obtiene aggregations de facets para categorías y autores.
+     *
+     * @param text texto opcional de búsqueda base.
+     * @param visible filtro opcional de visibilidad.
+     * @return estructura agregada de facets.
+     */
     @GetMapping("/search/facets")
     public ResponseEntity<BookFacetsResponseDTO> facets(
             @RequestParam(required = false) String text,
@@ -161,6 +233,12 @@ public class BookController {
         return ResponseEntity.ok(bookService.facets(text, visible));
     }
 
+    /**
+     * Consulta disponibilidad de un libro para el flujo de pagos.
+     *
+     * @param id identificador de libro.
+     * @return datos de disponibilidad o 404 si no existe.
+     */
     @GetMapping("/{id}/availability")
     public ResponseEntity<AvailabilityResponseDTO> checkAvailability(@PathVariable Long id) {
         AvailabilityResponseDTO availability = bookService.checkAvailability(id);
@@ -170,6 +248,13 @@ public class BookController {
         return ResponseEntity.ok(availability);
     }
 
+    /**
+     * Ajusta stock de un libro con cantidad relativa.
+     *
+     * @param id identificador de libro.
+     * @param dto cantidad de ajuste (positiva o negativa).
+     * @return libro actualizado, 404 si no existe o 400 si invalida stock.
+     */
     @PatchMapping("/{id}/stock")
     public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody StockUpdateDTO dto) {
         if (dto.getQuantity() == null) {

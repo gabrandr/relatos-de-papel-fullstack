@@ -33,6 +33,10 @@ import com.relatosdepapel.ms_books_catalogue.dto.BookResponseDTO;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Repositorio operativo de libros sobre OpenSearch.
+ * Encapsula creación de índice, seed inicial y consultas de catálogo/suggest/facets.
+ */
 @Component
 @RequiredArgsConstructor
 public class OpenSearchBookStore {
@@ -41,6 +45,9 @@ public class OpenSearchBookStore {
     private final OpenSearchProperties properties;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Inicializa el almacenamiento validando índice y cargando seed cuando está vacío.
+     */
     @PostConstruct
     void initialize() {
         ensureIndex();
@@ -49,6 +56,11 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Evalúa si el índice no contiene documentos.
+     *
+     * @return `true` si el índice está vacío.
+     */
     private boolean isIndexEmpty() {
         try {
             Response response = restClient.performRequest(
@@ -60,10 +72,21 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Retorna el catálogo visible para consumo frontend.
+     *
+     * @return lista de libros visibles.
+     */
     public List<BookResponseDTO> findAllVisible() {
         return search(null, null, null, null, null, null, true, null, null, null, null, null);
     }
 
+    /**
+     * Busca un libro por id de documento.
+     *
+     * @param id identificador de libro.
+     * @return libro encontrado o `null` si no existe.
+     */
     public BookResponseDTO findById(Long id) {
         try {
             Response response = restClient
@@ -83,6 +106,12 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Verifica existencia de un ISBN en el índice.
+     *
+     * @param isbn isbn a validar.
+     * @return `true` si existe al menos un libro con ese ISBN.
+     */
     public boolean existsByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {
             return false;
@@ -94,6 +123,12 @@ public class OpenSearchBookStore {
         return executeSearchAndParse(body).stream().findAny().isPresent();
     }
 
+    /**
+     * Crea un libro asignando el siguiente id incremental disponible.
+     *
+     * @param dto payload de creación.
+     * @return libro creado.
+     */
     public BookResponseDTO create(BookRequestDTO dto) {
         long nextId = getNextId();
         BookResponseDTO book = new BookResponseDTO(
@@ -112,6 +147,14 @@ public class OpenSearchBookStore {
         return book;
     }
 
+    /**
+     * Reemplaza campos editables de un libro existente.
+     * Conserva el ISBN previo para mantener consistencia referencial.
+     *
+     * @param id identificador de libro.
+     * @param dto payload de actualización.
+     * @return libro actualizado o `null` si no existe.
+     */
     public BookResponseDTO update(Long id, BookRequestDTO dto) {
         BookResponseDTO current = findById(id);
         if (current == null) {
@@ -134,11 +177,23 @@ public class OpenSearchBookStore {
         return updated;
     }
 
+    /**
+     * Guarda un libro existente en OpenSearch.
+     *
+     * @param book entidad a indexar.
+     * @return mismo libro tras persistencia.
+     */
     public BookResponseDTO save(BookResponseDTO book) {
         indexBook(book);
         return book;
     }
 
+    /**
+     * Elimina un libro por id.
+     *
+     * @param id identificador de libro.
+     * @return `true` si el documento se eliminó, `false` si no existía.
+     */
     public boolean delete(Long id) {
         try {
             Request request = new Request("DELETE", "/" + properties.getIndex() + "/_doc/" + id);
@@ -157,6 +212,23 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Ejecuta búsqueda full-text + filtros estructurados.
+     *
+     * @param title título parcial para búsqueda.
+     * @param author autor parcial.
+     * @param category categoría exacta.
+     * @param isbn isbn exacto.
+     * @param ratingMin rating mínimo.
+     * @param ratingMax rating máximo.
+     * @param visible filtro de visibilidad.
+     * @param minPrice precio mínimo.
+     * @param maxPrice precio máximo.
+     * @param publicationDateFrom fecha inicial.
+     * @param publicationDateTo fecha final.
+     * @param minStock stock mínimo.
+     * @return libros que cumplen la consulta.
+     */
     public List<BookResponseDTO> search(
             String title,
             String author,
@@ -216,6 +288,13 @@ public class OpenSearchBookStore {
         return executeSearchAndParse(body);
     }
 
+    /**
+     * Retorna sugerencias de título priorizando coincidencias relevantes visibles.
+     *
+     * @param text texto parcial del usuario.
+     * @param size máximo de sugerencias.
+     * @return títulos sugeridos únicos.
+     */
     public List<String> suggest(String text, int size) {
         if (text == null || text.isBlank()) {
             return List.of();
@@ -266,6 +345,13 @@ public class OpenSearchBookStore {
         return new ArrayList<>(unique);
     }
 
+    /**
+     * Calcula facets de categorías y autores para filtros de UI.
+     *
+     * @param text texto base opcional.
+     * @param visible visibilidad opcional.
+     * @return respuesta con total y buckets agregados.
+     */
     public BookFacetsResponseDTO facets(String text, Boolean visible) {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("size", 0);
@@ -306,6 +392,9 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Garantiza que el índice exista con mapping compatible con búsquedas y suggest.
+     */
     private void ensureIndex() {
         try {
             Response head = restClient.performRequest(new Request("HEAD", "/" + properties.getIndex()));
@@ -353,6 +442,9 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Inserta catálogo semilla inicial mediante operación bulk NDJSON.
+     */
     private void syncSeedData() {
         try {
             List<BookResponseDTO> seedBooks = List.of(
@@ -438,6 +530,11 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Indexa o sobreescribe un libro por id y refresca índice para lectura inmediata.
+     *
+     * @param book libro a indexar.
+     */
     private void indexBook(BookResponseDTO book) {
         try {
             Request request = new Request("PUT", "/" + properties.getIndex() + "/_doc/" + book.getId());
@@ -449,6 +546,11 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Calcula el siguiente id secuencial basado en el mayor id actual.
+     *
+     * @return siguiente id disponible.
+     */
     private long getNextId() {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("size", 1);
@@ -464,6 +566,13 @@ public class OpenSearchBookStore {
         return books.get(0).getId() + 1L;
     }
 
+    /**
+     * Ejecuta una consulta `_search` y retorna el JSON raíz.
+     *
+     * @param body cuerpo de consulta OpenSearch.
+     * @return respuesta parseada.
+     * @throws IOException cuando falla llamada de red o parseo.
+     */
     private JsonNode executeSearch(ObjectNode body) throws IOException {
         Request request = new Request("GET", "/" + properties.getIndex() + "/_search");
         request.setJsonEntity(body.toString());
@@ -471,6 +580,12 @@ public class OpenSearchBookStore {
         return objectMapper.readTree(response.getEntity().getContent());
     }
 
+    /**
+     * Ejecuta búsqueda y convierte hits a DTO de libro.
+     *
+     * @param body cuerpo de consulta OpenSearch.
+     * @return lista de libros parseados.
+     */
     private List<BookResponseDTO> executeSearchAndParse(ObjectNode body) {
         try {
             JsonNode root = executeSearch(body);
@@ -485,6 +600,12 @@ public class OpenSearchBookStore {
         }
     }
 
+    /**
+     * Mapea un `_source` JSON a `BookResponseDTO`.
+     *
+     * @param source nodo fuente del documento.
+     * @return dto de libro normalizado.
+     */
     private BookResponseDTO parseBookSource(JsonNode source) {
         LocalDate publicationDate = null;
         if (source.hasNonNull("publicationDate") && !source.get("publicationDate").asText().isBlank()) {
@@ -508,6 +629,12 @@ public class OpenSearchBookStore {
                 price);
     }
 
+    /**
+     * Añade condición de título usando `bool_prefix` sobre campos `search_as_you_type`.
+     *
+     * @param must nodo de cláusulas obligatorias.
+     * @param value término de título.
+     */
     private void addTitleQuery(ArrayNode must, String value) {
         if (value == null || value.isBlank()) {
             return;
@@ -524,6 +651,12 @@ public class OpenSearchBookStore {
         must.add(objectMapper.createObjectNode().set("multi_match", multiMatch));
     }
 
+    /**
+     * Añade condición por autor en modo `match_phrase_prefix`.
+     *
+     * @param must nodo de cláusulas obligatorias.
+     * @param value término de autor.
+     */
     private void addAuthorQuery(ArrayNode must, String value) {
         if (value == null || value.isBlank()) {
             return;
@@ -534,6 +667,13 @@ public class OpenSearchBookStore {
         must.add(objectMapper.createObjectNode().set("match_phrase_prefix", phrasePrefix));
     }
 
+    /**
+     * Añade filtro exacto por campo (`term` query).
+     *
+     * @param filter nodo de filtros.
+     * @param field nombre de campo.
+     * @param value valor exacto a comparar.
+     */
     private void addTermFilter(ArrayNode filter, String field, Object value) {
         if (value == null) {
             return;
@@ -552,6 +692,14 @@ public class OpenSearchBookStore {
         filter.add(objectMapper.createObjectNode().set("term", termNode));
     }
 
+    /**
+     * Añade filtro de rango (`gte`/`lte`) para campo numérico o fecha.
+     *
+     * @param filter nodo de filtros.
+     * @param field nombre del campo.
+     * @param gte límite inferior opcional.
+     * @param lte límite superior opcional.
+     */
     private void addRangeFilter(ArrayNode filter, String field, Object gte, Object lte) {
         ObjectNode values = objectMapper.createObjectNode();
         if (gte != null) {
@@ -565,6 +713,13 @@ public class OpenSearchBookStore {
         filter.add(objectMapper.createObjectNode().set("range", rangeField));
     }
 
+    /**
+     * Inserta un valor tipado en un nodo JSON para filtros de rango.
+     *
+     * @param node nodo destino.
+     * @param field campo destino.
+     * @param value valor a serializar.
+     */
     private void putNodeValue(ObjectNode node, String field, Object value) {
         if (value instanceof Integer intValue) {
             node.put(field, intValue);
@@ -585,6 +740,13 @@ public class OpenSearchBookStore {
         node.put(field, Objects.toString(value));
     }
 
+    /**
+     * Convierte buckets de una terms aggregation en mapa ordenado.
+     *
+     * @param root respuesta raíz de OpenSearch.
+     * @param aggName nombre de la agregación.
+     * @return mapa `bucketKey -> docCount`.
+     */
     private Map<String, Long> parseTermsAgg(JsonNode root, String aggName) {
         Map<String, Long> values = new LinkedHashMap<>();
         ArrayNode buckets = (ArrayNode) root.path("aggregations").path(aggName).path("buckets");
@@ -594,10 +756,23 @@ public class OpenSearchBookStore {
         return values;
     }
 
+    /**
+     * Estandariza excepciones internas del store con contexto funcional.
+     *
+     * @param message mensaje de dominio.
+     * @param ex excepción original.
+     * @return excepción runtime enriquecida.
+     */
     private RuntimeException fail(String message, Exception ex) {
         return new IllegalStateException(message + ": " + ex.getMessage(), ex);
     }
 
+    /**
+     * Normaliza texto removiendo acentos y espacios extra para comparar sugerencias.
+     *
+     * @param input texto de entrada.
+     * @return texto normalizado en minúsculas.
+     */
     private String normalize(String input) {
         String normalized = Normalizer.normalize(input == null ? "" : input, Normalizer.Form.NFD);
         return normalized.replaceAll("\\p{M}", "").toLowerCase().trim();

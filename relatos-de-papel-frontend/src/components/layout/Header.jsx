@@ -5,28 +5,41 @@ import { useCartStore } from "../../store/useCartStore";
 import { getBookSuggestions } from "../../api/booksApi";
 
 /**
- * Encabezado con logo, buscador y carrito.
+ * Encabezado principal con logo, buscador conectado a OpenSearch y acceso al carrito.
+ *
+ * @returns {JSX.Element} Header fijo con estado de búsqueda sincronizado a la URL.
  */
 const Header = () => {
-  const navigate = useNavigate(); //navegador
+  const navigate = useNavigate();
   const location = useLocation();
-  const cartCount = useCartStore((state) => state.getTotalItems()); //cantidad total de items en carrito
-  const [search, setSearch] = useState(""); //estado para el buscador
+  const cartCount = useCartStore((state) => state.getTotalItems());
+  const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const wrapperRef = useRef(null);
 
-  //funcion para buscar
+  /**
+   * Ejecuta búsqueda explícita al enviar el formulario.
+   *
+   * @param {React.FormEvent<HTMLFormElement>} e Evento submit del formulario.
+   * @returns {void}
+   */
   const handleSearch = (e) => {
-    e.preventDefault(); //prevenir el comportamiento por defecto del formulario
+    e.preventDefault();
     const value = search.trim();
     if (!value) {
       return;
     }
-    navigate(`/home?search=${encodeURIComponent(value)}`); //navegar a la pagina de home con el query param search
+    navigate(`/home?search=${encodeURIComponent(value)}`);
     setShowSuggestions(false);
   };
 
+  /**
+   * Aplica una sugerencia seleccionada y navega al resultado.
+   *
+   * @param {string} value Texto de la sugerencia.
+   * @returns {void}
+   */
   const handleSuggestionSelect = (value) => {
     setSearch(value);
     setSuggestions([]);
@@ -35,6 +48,7 @@ const Header = () => {
   };
 
   useEffect(() => {
+    // Mantiene input/sugerencias alineados con la URL actual.
     const params = new URLSearchParams(location.search);
     const nextSearch = location.pathname === "/home" ? params.get("search") || "" : "";
     setSearch(nextSearch);
@@ -49,6 +63,7 @@ const Header = () => {
       return;
     }
 
+    // Debounce para evitar disparar requests de suggest por cada pulsación.
     const timer = setTimeout(async () => {
       try {
         const values = await getBookSuggestions(search);
@@ -64,6 +79,12 @@ const Header = () => {
   }, [search]);
 
   useEffect(() => {
+    /**
+     * Cierra el dropdown de sugerencias si el click ocurre fuera del buscador.
+     *
+     * @param {MouseEvent} event Evento de mouse global.
+     * @returns {void}
+     */
     const handleOutsideClick = (event) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
         setShowSuggestions(false);
@@ -74,6 +95,12 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
+  /**
+   * Actualiza el valor del input y oculta sugerencias al limpiar texto.
+   *
+   * @param {string} value Valor escrito por el usuario.
+   * @returns {void}
+   */
   const handleInputChange = (value) => {
     setSearch(value);
     if (!value.trim()) {
@@ -81,6 +108,11 @@ const Header = () => {
     }
   };
 
+  /**
+   * Limpia la búsqueda y vuelve al catálogo base sin query params.
+   *
+   * @returns {void}
+   */
   const handleClearSearch = () => {
     setSearch("");
     setSuggestions([]);

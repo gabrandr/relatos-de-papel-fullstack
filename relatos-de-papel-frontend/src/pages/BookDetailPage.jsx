@@ -5,6 +5,11 @@ import Button from "../components/ui/Button";
 import { getBookById } from "../api/booksApi";
 import { useCartStore } from "../store/useCartStore";
 
+/**
+ * Página de detalle de libro con carga remota y retorno contextual al catálogo.
+ *
+ * @returns {JSX.Element} Vista de detalle, estados de carga/error y acciones de compra.
+ */
 const BookDetailPage = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -24,6 +29,12 @@ const BookDetailPage = () => {
   useEffect(() => {
     let active = true;
 
+    /**
+     * Carga el libro por ID y ajusta estados de la vista.
+     * Usa bandera `active` para evitar setState tras desmontar componente.
+     *
+     * @returns {Promise<void>}
+     */
     const loadBook = async () => {
       setLoading(true);
       setError("");
@@ -57,6 +68,11 @@ const BookDetailPage = () => {
     };
   }, [id]);
 
+  /**
+   * Agrega el libro actual al carrito y muestra un toast breve de confirmación.
+   *
+   * @returns {void}
+   */
   const handleAddToCart = () => {
     if (!book) {
       return;

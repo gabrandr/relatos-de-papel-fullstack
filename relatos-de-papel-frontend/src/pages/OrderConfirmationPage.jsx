@@ -4,12 +4,23 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import useCountdown from "../hooks/useCountdown";
 import { useCartStore } from "../store/useCartStore";
 
+/**
+ * Página de confirmación de compra con vaciado de carrito y redirección automática.
+ *
+ * @returns {JSX.Element} Vista final de checkout.
+ */
 const OrderConfirmationPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const clearCart = useCartStore((state) => state.clearCart);
   const hasRedirectedRef = useRef(false);
 
+  /**
+   * Redirige al catálogo una única vez para evitar dobles navegaciones
+   * cuando coinciden click manual y countdown automático.
+   *
+   * @returns {void}
+   */
   const redirectToHome = useCallback(() => {
     if (hasRedirectedRef.current) {
       return;
@@ -19,6 +30,11 @@ const OrderConfirmationPage = () => {
   }, [navigate]);
   const countdown = useCountdown(5, redirectToHome);
 
+  /**
+   * Construye referencia visible de la compra usando ids de pago reales cuando existen.
+   *
+   * @returns {string} Referencia de pedido para mostrar al usuario.
+   */
   const orderReference = useMemo(() => {
     const ids = location.state?.paymentIds;
     if (Array.isArray(ids) && ids.length > 0) {
@@ -28,6 +44,7 @@ const OrderConfirmationPage = () => {
   }, [location.state]);
 
   useEffect(() => {
+    // Evita repetir side effects de checkout al recargar/volver con historial.
     clearCart();
     window.history.replaceState({}, document.title);
   }, [clearCart]);

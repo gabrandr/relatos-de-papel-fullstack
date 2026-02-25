@@ -4,6 +4,12 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import BookCard from "../features/books/BookCard";
 import { getBooks } from "../api/booksApi";
 
+/**
+ * Página principal de catálogo.
+ * Soporta búsqueda por query string y restauración de scroll al volver desde detalle.
+ *
+ * @returns {JSX.Element} Vista de catálogo con estados de carga/error/sin resultados.
+ */
 const HomePage = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -17,6 +23,11 @@ const HomePage = () => {
   useEffect(() => {
     let active = true;
 
+    /**
+     * Carga libros desde backend aplicando el término de búsqueda actual.
+     *
+     * @returns {Promise<void>}
+     */
     const loadBooks = async () => {
       setLoading(true);
       setError("");
@@ -49,6 +60,7 @@ const HomePage = () => {
     };
   }, [search]);
 
+  // Reinicia la bandera cuando cambia la navegación para permitir futuras restauraciones.
   useEffect(() => {
     restoredScrollRef.current = false;
   }, [location.key]);
@@ -58,6 +70,7 @@ const HomePage = () => {
       return;
     }
 
+    // Restaura scroll de forma explícita cuando la navegación trae estado contextual.
     if (location.state?.restoreScroll && typeof location.state.scrollY === "number") {
       restoredScrollRef.current = true;
       requestAnimationFrame(() => {

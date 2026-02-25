@@ -11,10 +11,21 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Configuración del cliente REST de OpenSearch para el microservicio de catálogo.
+ * Soporta credenciales explícitas por propiedades y fallback a user-info en la URL.
+ */
 @Configuration
 @EnableConfigurationProperties(OpenSearchProperties.class)
 public class OpenSearchConfig {
 
+    /**
+     * Crea el cliente REST de OpenSearch con autenticación básica cuando está disponible.
+     *
+     * @param properties propiedades externas de OpenSearch.
+     * @return cliente REST listo para operaciones del repositorio.
+     * @throws IllegalStateException cuando no se define `opensearch.url`.
+     */
     @Bean(destroyMethod = "close")
     public RestClient openSearchRestClient(OpenSearchProperties properties) {
         if (properties.getUrl() == null || properties.getUrl().isBlank()) {

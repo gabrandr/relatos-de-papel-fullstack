@@ -15,22 +15,36 @@ import com.relatosdepapel.ms_books_catalogue.dto.StockUpdateDTO;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Implementación de negocio del catálogo basada en OpenSearch.
+ */
 @Service
 @RequiredArgsConstructor
 public class BookServiceImpl implements BookService {
 
     private final OpenSearchBookStore bookStore;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<BookResponseDTO> getAll() {
         return bookStore.findAllVisible();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public BookResponseDTO getById(Long id) {
         return bookStore.findById(id);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException cuando el ISBN ya existe.
+     */
     @Override
     public BookResponseDTO create(BookRequestDTO dto) {
         if (bookStore.existsByIsbn(dto.getIsbn())) {
@@ -39,11 +53,17 @@ public class BookServiceImpl implements BookService {
         return bookStore.create(dto);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public BookResponseDTO update(Long id, BookRequestDTO dto) {
         return bookStore.update(id, dto);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public BookResponseDTO patch(Long id, BookPatchDTO dto) {
         BookResponseDTO current = bookStore.findById(id);
@@ -79,11 +99,17 @@ public class BookServiceImpl implements BookService {
         return bookStore.save(current);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean delete(Long id) {
         return bookStore.delete(id);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<BookResponseDTO> search(String title, String author, String category, String isbn, Integer ratingMin,
             Integer ratingMax, Boolean visible, BigDecimal minPrice, BigDecimal maxPrice, LocalDate publicationDateFrom,
@@ -92,17 +118,27 @@ public class BookServiceImpl implements BookService {
                 publicationDateFrom, publicationDateTo, minStock);
     }
 
+    /**
+     * {@inheritDoc}
+     * Limita el tamaño de respuesta entre 1 y 20 para proteger la consulta de suggest.
+     */
     @Override
     public List<String> suggest(String text, Integer size) {
         int pageSize = (size == null || size <= 0) ? 8 : Math.min(size, 20);
         return bookStore.suggest(text, pageSize);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public BookFacetsResponseDTO facets(String text, Boolean visible) {
         return bookStore.facets(text, visible);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public AvailabilityResponseDTO checkAvailability(Long id) {
         BookResponseDTO book = bookStore.findById(id);
@@ -121,6 +157,11 @@ public class BookServiceImpl implements BookService {
                 book.getPrice());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @throws IllegalArgumentException cuando el ajuste deja stock negativo.
+     */
     @Override
     public BookResponseDTO updateStock(Long id, StockUpdateDTO dto) {
         BookResponseDTO book = bookStore.findById(id);

@@ -3,6 +3,13 @@ import { useCartStore } from "../../store/useCartStore";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 
+/**
+ * Card de libro utilizada en el catálogo.
+ *
+ * @param {{ book: Record<string, any> }} props Propiedades del componente.
+ * @param {Record<string, any>} props.book Libro a renderizar.
+ * @returns {JSX.Element} Tarjeta con imagen, datos básicos y acciones.
+ */
 const BookCard = ({ book }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -10,12 +17,22 @@ const BookCard = ({ book }) => {
   const [showToast, setShowToast] = useState(false);
   const [imageSrc, setImageSrc] = useState(book.image);
 
+  /**
+   * Agrega el libro al carrito y muestra confirmación temporal.
+   *
+   * @returns {void}
+   */
   const handleAddToCart = () => {
     addToCart(book);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
   };
 
+  /**
+   * Navega al detalle preservando ruta y posición de scroll para retorno contextual.
+   *
+   * @returns {void}
+   */
   const handleOpenDetail = () => {
     navigate(`/book/${book.id}`, {
       state: {
