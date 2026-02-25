@@ -1,26 +1,49 @@
 import { useState } from "react";
 import { useCartStore } from "../../store/useCartStore";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 
 /**
- * Tarjeta de libro con imagen, título, precio y botón de añadir.
+ * Card de libro utilizada en el catálogo.
+ *
+ * @param {{ book: Record<string, any> }} props Propiedades del componente.
+ * @param {Record<string, any>} props.book Libro a renderizar.
+ * @returns {JSX.Element} Tarjeta con imagen, datos básicos y acciones.
  */
 const BookCard = ({ book }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const addToCart = useCartStore((state) => state.addToCart);
-  const [showToast, setShowToast] = useState(false); //estado para mostrar el toast
+  const [showToast, setShowToast] = useState(false);
+  const [imageSrc, setImageSrc] = useState(book.image);
 
-  //funcion para añadir al carrito y mostrar toast
+  /**
+   * Agrega el libro al carrito y muestra confirmación temporal.
+   *
+   * @returns {void}
+   */
   const handleAddToCart = () => {
     addToCart(book);
     setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000); //oculta el toast despues de 2 segundos
+    setTimeout(() => setShowToast(false), 2000);
+  };
+
+  /**
+   * Navega al detalle preservando ruta y posición de scroll para retorno contextual.
+   *
+   * @returns {void}
+   */
+  const handleOpenDetail = () => {
+    navigate(`/book/${book.id}`, {
+      state: {
+        fromPath: `${location.pathname}${location.search}`,
+        scrollY: window.scrollY,
+      },
+    });
   };
 
   return (
     <>
-      {/* Toast de confirmacion */}
       {showToast && (
         <div className="fixed top-20 right-4 bg-success text-white px-6 py-3 rounded-lg shadow-lg z-50">
           ✓ {book.title} añadido al carrito
@@ -28,23 +51,21 @@ const BookCard = ({ book }) => {
       )}
 
       <div className="bg-white p-4 rounded-lg shadow">
-        {/* imagen */}
         <img
-          src={book.image}
+          src={imageSrc}
           alt={book.title}
           className="w-full h-48 object-contain mb-4 cursor-pointer hover:opacity-80"
-          onClick={() => navigate(`/book/${book.id}`)}
+          onError={() => setImageSrc(book.imageFallback || "/book-placeholder.svg")}
+          onClick={handleOpenDetail}
         />
-        {/* titulo */}
         <h3
           className="font-bold cursor-pointer hover:text-primary"
-          onClick={() => navigate(`/book/${book.id}`)}
+          onClick={handleOpenDetail}
         >
           {book.title}
         </h3>
         <p className="text-text-body">{book.author}</p>
         <p className="text-primary font-bold">${book.price}</p>
-        {/*boton agregar carrito*/}
         <Button
           onClick={handleAddToCart}
           className="w-full bg-primary text-white py-2 rounded hover:bg-primary-dark"

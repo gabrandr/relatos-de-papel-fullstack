@@ -1,8 +1,8 @@
 package com.relatosdepapel.ms_books_catalogue.controller;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,213 +17,163 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.relatosdepapel.ms_books_catalogue.dto.AvailabilityResponseDTO;
+import com.relatosdepapel.ms_books_catalogue.dto.BookFacetsResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookPatchDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookRequestDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.ErrorResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.StockUpdateDTO;
-import com.relatosdepapel.ms_books_catalogue.dto.AvailabilityResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.service.BookService;
 
 import lombok.RequiredArgsConstructor;
 
-@RestController // Indica que esta clase es un controlador REST
-@RequestMapping("/api/books") // Mapea las peticiones a esta URL
-@RequiredArgsConstructor // Constructor con dependencias inyectadas
+/**
+ * Controlador REST del catálogo de libros.
+ * Expone operaciones CRUD, búsqueda, sugerencias, facets y stock.
+ */
+@RestController
+@RequestMapping("/api/books")
+@RequiredArgsConstructor
 public class BookController {
-    private final BookService bookService; // Inyección de dependencia del BookService
-
-    // GET ENDPOINTS
+    private final BookService bookService;
 
     /**
-     * GET /api/books
-     * Obtiene todos los libros del catálogo
+     * Lista los libros visibles del catálogo.
      *
-     * @return 200 OK con lista de libros
+     * @return listado de libros publicados.
      */
     @GetMapping
     public ResponseEntity<List<BookResponseDTO>> getAllBooks() {
-        List<BookResponseDTO> books = bookService.getAll(); // obtiene todos los libros
-        return ResponseEntity.ok(books); // 200 OK
+        return ResponseEntity.ok(bookService.getAll());
     }
 
     /**
-     * GET /api/books/{id}
-     * Obtiene un libro por su ID
+     * Obtiene detalle de libro por identificador.
      *
-     * @param id ID del libro
-     * @return 200 OK con el libro encontrado
-     *         404 Not Found si no existe
+     * @param id identificador de libro.
+     * @return libro encontrado o 404 si no existe.
      */
     @GetMapping("/{id}")
     public ResponseEntity<BookResponseDTO> getBookById(@PathVariable Long id) {
-        BookResponseDTO book = bookService.getById(id); // obtiene el libro por ID
+        BookResponseDTO book = bookService.getById(id);
         if (book == null) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(book); // 200 OK
+        return ResponseEntity.ok(book);
     }
 
-    // POST ENDPOINT
-
     /**
-     * POST /api/books
-     * Crea un nuevo libro en el catálogo
+     * Crea un libro nuevo tras validar campos obligatorios y reglas básicas de negocio.
      *
-     * @param dto Datos del libro a crear
-     * @return 201 Created con el libro creado
-     *         400 Bad Request si hay errores de validación
+     * @param dto payload de creación.
+     * @return libro creado (201), error de validación (400) o conflicto de ISBN (409).
      */
     @PostMapping
     public ResponseEntity<?> createBook(@RequestBody BookRequestDTO dto) {
-        // Validación 1: título no vacío
         if (dto.getTitle() == null || dto.getTitle().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El título no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El título no puede estar vacío"));
         }
-
-        // Validación 2: autor no vacío
         if (dto.getAuthor() == null || dto.getAuthor().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El autor no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El autor no puede estar vacío"));
         }
-
-        // Validación 3: ISBN no vacío
         if (dto.getIsbn() == null || dto.getIsbn().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El ISBN no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El ISBN no puede estar vacío"));
         }
-
-        // Validación 4: precio positivo
         if (dto.getPrice() == null || dto.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El precio debe ser mayor a 0"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El precio debe ser mayor a 0"));
+        }
+        if (dto.getStock() == null || dto.getStock() < 0) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El stock no puede ser negativo"));
         }
 
-        // Validación 5: stock no negativo
-        if (dto.getStock() == null || dto.getStock() < 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El stock no puede ser negativo"));
-        }
         try {
-            BookResponseDTO createdBook = bookService.create(dto); // crea el libro
-            return ResponseEntity.status(201).body(createdBook); // 201 Created
+            BookResponseDTO createdBook = bookService.create(dto);
+            return ResponseEntity.status(201).body(createdBook);
         } catch (IllegalArgumentException e) {
-            // ISBN duplicado u otra validación de negocio
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new ErrorResponseDTO(409, "El ISBN ya existe"));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponseDTO(409, "El ISBN ya existe"));
         }
     }
 
-    // PUT ENDPOINT
-
     /**
-     * PUT /api/books/{id}
-     * Actualiza un libro completo (todos los campos)
+     * Actualiza un libro completo por id.
      *
-     * @param id  ID del libro a actualizar
-     * @param dto Datos completos del libro
-     * @return 200 OK con el libro actualizado
-     *         400 Bad Request si hay errores de validación
-     *         404 Not Found si no existe
+     * @param id identificador de libro.
+     * @param dto payload de actualización.
+     * @return libro actualizado, 404 si no existe o 400 ante datos inválidos.
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateBook(@PathVariable Long id, @RequestBody BookRequestDTO dto) {
-        // Validación 1: título no vacío
         if (dto.getTitle() == null || dto.getTitle().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El título no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El título no puede estar vacío"));
         }
-
-        // Validación 2: autor no vacío
         if (dto.getAuthor() == null || dto.getAuthor().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El autor no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El autor no puede estar vacío"));
         }
-
-        // Validación 3: ISBN no vacío
         if (dto.getIsbn() == null || dto.getIsbn().isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El ISBN no puede estar vacío"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El ISBN no puede estar vacío"));
         }
-
-        // Validación 4: precio positivo
         if (dto.getPrice() == null || dto.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El precio debe ser mayor a 0"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El precio debe ser mayor a 0"));
         }
-
-        // Validación 5: stock no negativo
         if (dto.getStock() == null || dto.getStock() < 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "El stock no puede ser negativo"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "El stock no puede ser negativo"));
         }
 
-        BookResponseDTO updatedBook = bookService.update(id, dto); // actualiza el libro
+        BookResponseDTO updatedBook = bookService.update(id, dto);
         if (updatedBook == null) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(updatedBook); // 200 OK
+        return ResponseEntity.ok(updatedBook);
     }
 
-    // PATCH ENDPOINT
-
     /**
-     * PATCH /api/books/{id}
-     * Actualiza un libro parcialmente (solo campos enviados)
+     * Actualiza parcialmente un libro.
      *
-     * @param id  ID del libro a actualizar
-     * @param dto Datos parciales del libro
-     * @return 200 OK con el libro actualizado
-     *         404 Not Found si no existe
+     * @param id identificador de libro.
+     * @param dto campos parciales a actualizar.
+     * @return libro actualizado o 404 si no existe.
      */
     @PatchMapping("/{id}")
     public ResponseEntity<BookResponseDTO> patchBook(@PathVariable Long id, @RequestBody BookPatchDTO dto) {
-        BookResponseDTO updatedBook = bookService.patch(id, dto); // actualiza el libro
+        BookResponseDTO updatedBook = bookService.patch(id, dto);
         if (updatedBook == null) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(updatedBook); // 200 OK
+        return ResponseEntity.ok(updatedBook);
     }
 
-    // DELETE ENDPOINT
-
     /**
-     * DELETE /api/books/{id}
-     * Elimina un libro del catálogo
+     * Elimina un libro por id.
      *
-     * @param id ID del libro a eliminar
-     * @return 204 No Content si se eliminó correctamente
-     *         404 Not Found si no existe
+     * @param id identificador de libro.
+     * @return 204 si se elimina o 404 si no existe.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         boolean deleted = bookService.delete(id);
         if (!deleted) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.noContent().build(); // 204 No Content
+        return ResponseEntity.noContent().build();
     }
 
-    // SEARCH ENDPOINT
-
     /**
-     * GET /api/books/search
-     * Búsqueda dinámica de libros con múltiples filtros
+     * Ejecuta búsqueda compuesta de catálogo con filtros opcionales.
      *
-     * @param title               Título (búsqueda parcial)
-     * @param author              Autor (búsqueda parcial)
-     * @param category            Categoría exacta
-     * @param isbn                ISBN exacto
-     * @param ratingMin           Valoración mínima
-     * @param ratingMax           Valoración máxima
-     * @param visible             Visibilidad
-     * @param minPrice            Precio mínimo
-     * @param maxPrice            Precio máximo
-     * @param minStock            Stock mínimo
-     * @param publicationDateFrom Fecha de publicación desde
-     * @param publicationDateTo   Fecha de publicación hasta
-     * @return 200 OK con lista de libros que cumplen los criterios
+     * @param title texto para título.
+     * @param author texto para autor.
+     * @param category categoría exacta.
+     * @param isbn isbn exacto.
+     * @param ratingMin rating mínimo.
+     * @param ratingMax rating máximo.
+     * @param visible filtro de visibilidad.
+     * @param minPrice precio mínimo.
+     * @param maxPrice precio máximo.
+     * @param publicationDateFrom fecha de publicación inicial.
+     * @param publicationDateTo fecha de publicación final.
+     * @param minStock stock mínimo.
+     * @return listado de resultados.
      */
     @GetMapping("/search")
     public ResponseEntity<List<BookResponseDTO>> searchBooks(
@@ -239,65 +189,96 @@ public class BookController {
             @RequestParam(required = false) LocalDate publicationDateFrom,
             @RequestParam(required = false) LocalDate publicationDateTo,
             @RequestParam(required = false) Integer minStock) {
-        List<BookResponseDTO> results = bookService.search(title, author, category, isbn, ratingMin, ratingMax, visible,
-                minPrice, maxPrice, publicationDateFrom, publicationDateTo, minStock); // busca libros con los filtros
-        return ResponseEntity.ok(results); // 200 OK
+
+        List<BookResponseDTO> results = bookService.search(
+                title,
+                author,
+                category,
+                isbn,
+                ratingMin,
+                ratingMax,
+                visible,
+                minPrice,
+                maxPrice,
+                publicationDateFrom,
+                publicationDateTo,
+                minStock);
+        return ResponseEntity.ok(results);
     }
 
-    // AVAILABILITY ENDPOINT
+    /**
+     * Retorna sugerencias de autocompletado para el buscador del frontend.
+     *
+     * @param text texto parcial ingresado por el usuario.
+     * @param size tamaño máximo opcional de respuesta.
+     * @return lista de sugerencias.
+     */
+    @GetMapping("/search/suggest")
+    public ResponseEntity<List<String>> suggest(@RequestParam String text,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(bookService.suggest(text, size));
+    }
 
     /**
-     * GET /api/books/{id}/availability
-     * Verifica la disponibilidad de un libro
-     * Usado por ms-books-payments antes de crear una compra
+     * Obtiene aggregations de facets para categorías y autores.
      *
-     * @param id ID del libro
-     * @return 200 OK con información de disponibilidad
-     *         404 Not Found si no existe
+     * @param text texto opcional de búsqueda base.
+     * @param visible filtro opcional de visibilidad.
+     * @param category filtro opcional de categoría.
+     * @param author filtro opcional de autor.
+     * @return estructura agregada de facets.
+     */
+    @GetMapping("/search/facets")
+    public ResponseEntity<BookFacetsResponseDTO> facets(
+            @RequestParam(required = false) String text,
+            @RequestParam(required = false) Boolean visible,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String author) {
+        return ResponseEntity.ok(bookService.facets(text, visible, category, author));
+    }
+
+    /**
+     * Consulta disponibilidad de un libro para el flujo de pagos.
+     *
+     * @param id identificador de libro.
+     * @return datos de disponibilidad o 404 si no existe.
      */
     @GetMapping("/{id}/availability")
     public ResponseEntity<AvailabilityResponseDTO> checkAvailability(@PathVariable Long id) {
-        AvailabilityResponseDTO availability = bookService.checkAvailability(id); // verifica la disponibilidad
+        AvailabilityResponseDTO availability = bookService.checkAvailability(id);
         if (availability == null) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(availability); // 200 OK
+        return ResponseEntity.ok(availability);
     }
 
-    // STOCK ENDPOINT
-
     /**
-     * PATCH /api/books/{id}/stock
-     * Actualiza el stock de un libro (incremento o decremento)
-     * Usado por ms-books-payments para manejar inventario
+     * Ajusta stock de un libro con cantidad relativa.
      *
-     * @param id  ID del libro
-     * @param dto Objeto con quantity (positivo = incremento, negativo = decremento)
-     * @return 200 OK con el libro actualizado
-     *         400 Bad Request si hay errores
-     *         404 Not Found si no existe
+     * @param id identificador de libro.
+     * @param dto cantidad de ajuste (positiva o negativa).
+     * @return libro actualizado, 404 si no existe o 400 si invalida stock.
      */
     @PatchMapping("/{id}/stock")
     public ResponseEntity<?> updateStock(@PathVariable Long id, @RequestBody StockUpdateDTO dto) {
-        // Validación 1: quantity no null
         if (dto.getQuantity() == null) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "La cantidad no puede ser nula"));
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "La cantidad no puede ser nula"));
         }
-        // Verificar que el libro existe
+
         BookResponseDTO book = bookService.getById(id);
         if (book == null) {
             return ResponseEntity.notFound().build();
         }
-        // Validación 2: stock suficiente si es decremento
-        if (dto.getQuantity() < 0 && book.getStock() + dto.getQuantity() < 0) {
-            return ResponseEntity.badRequest()
-                    .body(new ErrorResponseDTO(400, "Stock insuficiente"));
+
+        int currentStock = book.getStock() == null ? 0 : book.getStock();
+        if (dto.getQuantity() < 0 && currentStock + dto.getQuantity() < 0) {
+            return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "Stock insuficiente"));
         }
-        BookResponseDTO updatedBook = bookService.updateStock(id, dto); // actualiza el stock
+
+        BookResponseDTO updatedBook = bookService.updateStock(id, dto);
         if (updatedBook == null) {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(updatedBook); // 200 OK
+        return ResponseEntity.ok(updatedBook);
     }
 }

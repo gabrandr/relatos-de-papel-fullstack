@@ -17,6 +17,7 @@
 # Temporary files
 *.tmp
 .cache/
+.env
 
 # Maven
 target/

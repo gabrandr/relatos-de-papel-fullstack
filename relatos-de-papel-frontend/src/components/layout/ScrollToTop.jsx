@@ -2,14 +2,21 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 /**
- * Resetea el scroll al inicio cuando cambia la ruta.
+ * Controla la posición global de scroll en cambios de ruta.
+ * Omite el reset cuando la navegación solicita restauración contextual.
+ *
+ * @returns {null} Componente de efecto sin render visual.
  */
 const ScrollToTop = () => {
-  const { pathname } = useLocation(); //escucha cambios en la ruta
+  const { key, pathname, search, state } = useLocation();
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]); //al cambiar la ruta, se ejecuta el useEffect
+    // Respeta la restauración de scroll iniciada desde el flujo catálogo -> detalle -> catálogo.
+    if (state?.restoreScroll) {
+      return;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [key, pathname, search, state]);
 
   return null;
 };

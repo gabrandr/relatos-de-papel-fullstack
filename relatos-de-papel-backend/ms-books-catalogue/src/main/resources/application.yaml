@@ -1,34 +1,29 @@
 server:
-  port: 8081 #Puerto del microservicio
+  port: ${PORT:8081}
 
 spring:
   application:
-    name: MS-BOOKS-CATALOGUE #Nombre del microservicio
+    name: MS-BOOKS-CATALOGUE
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
-  datasource:
-    url: jdbc:h2:mem:catalogue_db #Nombre de la base de datos
-    driver-class-name: org.h2.Driver #Driver de la base de datos
-    username: sa #Usuario de la base de datos
-    password: "" #Password de la base de datos
-
-  jpa:
-    hibernate:
-      ddl-auto: create-drop #Creacion de tablas al iniciar y eliminacion al finalizar
-    show-sql: true #Muestra queries SQL en consola
-    defer-datasource-initialization: true #Inicializacion de la base de datos
-
-  h2:
-    console:
-      enabled: true #Habilita la consola de H2
-      path: /h2-console #Ruta de la consola de H2
+opensearch:
+  url: ${OPENSEARCH_URL:}
+  username: ${OPENSEARCH_USERNAME:}
+  password: ${OPENSEARCH_PASSWORD:}
+  index: ${OPENSEARCH_INDEX:relatos}
+  recreate-on-incompatible-mapping: ${OPENSEARCH_RECREATE_ON_INCOMPATIBLE_MAPPING:false}
 
 eureka:
   instance:
-    preferIpAddress: false #Registro por nombre
-    hostname: localhost #Nombre del host
-    instance-id: ${spring.application.name}:${server.port} #ID personalizado de la instancia
+    preferIpAddress: false
+    hostname: ${HOSTNAME:localhost}
+    instance-id: ${spring.application.name}:${server.port}
   client:
-    register-with-eureka: true #Registro con Eureka como cliente
-    fetch-registry: true #Obtencion de registros de otros microservicios
+    enabled: ${EUREKA_ENABLED:true}
+    register-with-eureka: ${EUREKA_REGISTER:true}
+    fetch-registry: ${EUREKA_FETCH:true}
     service-url:
-      defaultZone: http://localhost:8761/eureka #URL del servidor Eureka
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}

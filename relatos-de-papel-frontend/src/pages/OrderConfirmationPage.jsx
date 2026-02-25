@@ -1,28 +1,57 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import useCountdown from "../hooks/useCountdown";
 import { useCartStore } from "../store/useCartStore";
 
 /**
- * Página de confirmación de compra exitosa.
+ * Página de confirmación de compra con vaciado de carrito y redirección automática.
+ *
+ * @returns {JSX.Element} Vista final de checkout.
  */
 const OrderConfirmationPage = () => {
-  // Generar número de pedido aleatorio (lazy initialization con useState)
-  const [orderId] = useState(() => Math.floor(100000 + Math.random() * 900000));
+  const navigate = useNavigate();
+  const location = useLocation();
   const clearCart = useCartStore((state) => state.clearCart);
+  const hasRedirectedRef = useRef(false);
+
+  /**
+   * Redirige al catálogo una única vez para evitar dobles navegaciones
+   * cuando coinciden click manual y countdown automático.
+   *
+   * @returns {void}
+   */
+  const redirectToHome = useCallback(() => {
+    if (hasRedirectedRef.current) {
+      return;
+    }
+    hasRedirectedRef.current = true;
+    navigate("/home");
+  }, [navigate]);
+  const countdown = useCountdown(5, redirectToHome);
+
+  /**
+   * Construye referencia visible de la compra usando ids de pago reales cuando existen.
+   *
+   * @returns {string} Referencia de pedido para mostrar al usuario.
+   */
+  const orderReference = useMemo(() => {
+    const ids = location.state?.paymentIds;
+    if (Array.isArray(ids) && ids.length > 0) {
+      return `#${ids.join("-")}`;
+    }
+    return `#${Math.floor(100000 + Math.random() * 900000)}`;
+  }, [location.state]);
 
   useEffect(() => {
-    // Limpiar el carrito al entrar a la página de confirmación
+    // Evita repetir side effects de checkout al recargar/volver con historial.
     clearCart();
-
-    // Limpiar el estado de la navegación para evitar regresar con el botón "Atrás"
-    // Esto borra el flag { orderCompleted: true } del historial actual
     window.history.replaceState({}, document.title);
   }, [clearCart]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="bg-surface p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-border">
-        {/* Success Icon */}
         <div className="mb-6 flex justify-center">
           <div className="bg-success/20 p-4 rounded-full">
             <svg
@@ -40,16 +69,12 @@ const OrderConfirmationPage = () => {
           </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-text-main mb-2">
-          ¡Gracias por tu compra!
-        </h1>
+        <h1 className="text-3xl font-bold text-text-main mb-2">¡Gracias por tu compra!</h1>
         <p className="text-text-muted mb-8">
-          Número de pedido:{" "}
-          <span className="font-mono font-bold text-text-body">#{orderId}</span>
+          Referencia de pago: <span className="font-mono font-bold text-text-body">{orderReference}</span>
         </p>
 
         <div className="space-y-4">
-          {/* Botón Descargar (Mock) */}
           <button className="w-full bg-primary text-white py-3.5 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2 group">
             Descargar E-book Ahora
             <svg
@@ -68,13 +93,19 @@ const OrderConfirmationPage = () => {
             </svg>
           </button>
 
-          {/* Botón Volver a la Tienda */}
           <Link
             to="/home"
+            onClick={(event) => {
+              event.preventDefault();
+              redirectToHome();
+            }}
             className="w-full bg-background text-text-body py-3.5 rounded-xl font-bold hover:bg-border transition-colors block"
           >
             Volver a la tienda
           </Link>
+          <p className="text-sm text-text-muted">
+            Redirigiendo al catálogo en {countdown} segundos...
+          </p>
         </div>
       </div>
     </div>

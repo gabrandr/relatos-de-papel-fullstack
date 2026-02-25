@@ -34,18 +34,15 @@ spring:
               uri: lb://MS-BOOKS-PAYMENTS
               predicates:
                 - Path=/api/payments/**
-      globalcors:
-        cors-configurations:
-          "[/**]":
-            allowedOrigins: "*"
-            allowedHeaders: "*"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              "[/**]":
+                allowedOrigins: "*"
+                allowedHeaders: "*"
+                allowedMethods:
+                  - POST
+                  - OPTIONS
 
 ## We enable the Actuator API to be able to access <<host>>/actuator/gateway/routes
 ## We expose the routings that have been automatically detected (all)

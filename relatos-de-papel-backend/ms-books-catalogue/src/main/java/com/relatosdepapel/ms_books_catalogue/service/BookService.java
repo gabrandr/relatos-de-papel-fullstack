@@ -5,100 +5,121 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.relatosdepapel.ms_books_catalogue.dto.AvailabilityResponseDTO;
+import com.relatosdepapel.ms_books_catalogue.dto.BookFacetsResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookPatchDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookRequestDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.BookResponseDTO;
 import com.relatosdepapel.ms_books_catalogue.dto.StockUpdateDTO;
 
 /**
- * Interface del servicio de libros.
- * Define los métodos de negocio para la gestión del catálogo.
+ * Contrato de negocio del catálogo de libros.
+ * Centraliza operaciones CRUD, búsqueda, sugerencias, facets y stock.
  */
 public interface BookService {
-    // METODOS CRUD
-
     /**
-     * Obtiene todos los libros (sin filtros).
+     * Obtiene el catálogo visible para el frontend.
+     *
+     * @return libros visibles.
      */
     List<BookResponseDTO> getAll();
 
     /**
-     * Busca un libro por ID.
-     * 
-     * @return BookResponseDTO si existe, null si no existe
+     * Obtiene un libro por id.
+     *
+     * @param id identificador de libro.
+     * @return libro encontrado o `null` si no existe.
      */
     BookResponseDTO getById(Long id);
 
     /**
-     * Crea un nuevo libro.
-     * 
-     * @throws IllegalArgumentException si el ISBN ya existe
+     * Crea un libro nuevo validando unicidad de ISBN.
+     *
+     * @param dto payload de creación.
+     * @return libro persistido.
      */
     BookResponseDTO create(BookRequestDTO dto);
 
     /**
-     * Actualiza un libro completo (PUT).
-     * 
-     * @return BookResponseDTO actualizado o null si no existe
+     * Reemplaza los campos editables de un libro existente.
+     *
+     * @param id identificador de libro.
+     * @param dto payload de actualización completa.
+     * @return libro actualizado o `null` si no existe.
      */
     BookResponseDTO update(Long id, BookRequestDTO dto);
 
     /**
-     * Actualiza parcialmente un libro (PATCH).
-     * 
-     * @return BookResponseDTO actualizado o null si no existe
+     * Actualiza parcialmente un libro existente.
+     *
+     * @param id identificador de libro.
+     * @param dto payload parcial.
+     * @return libro actualizado o `null` si no existe.
      */
     BookResponseDTO patch(Long id, BookPatchDTO dto);
 
     /**
-     * Elimina un libro por ID.
-     * 
-     * @return true si se eliminó, false si no existía
+     * Elimina un libro por id.
+     *
+     * @param id identificador de libro.
+     * @return `true` si se elimina, `false` si no existe.
      */
     boolean delete(Long id);
 
-    // METODO DE BUSQUEDA DINAMICA
-
     /**
-     * Búsqueda avanzada con múltiples filtros opcionales.
-     * Todos los parámetros son opcionales (pueden ser null).
-     * Se combinan con AND si se proporcionan múltiples filtros.
-     * 
-     * @param title               Búsqueda parcial en título (case-insensitive)
-     * @param author              Búsqueda parcial en autor (case-insensitive)
-     * @param category            Búsqueda exacta por categoría
-     * @param isbn                Búsqueda exacta por ISBN
-     * @param ratingMin           Rating mínimo (>=)
-     * @param ratingMax           Rating máximo (<=)
-     * @param visible             Filtro de visibilidad (true/false/null)
-     * @param minPrice            Precio mínimo (>=)
-     * @param maxPrice            Precio máximo (<=)
-     * @param publicationDateFrom Fecha de publicación desde (>=)
-     * @param publicationDateTo   Fecha de publicación hasta (<=)
-     * @param minStock            Stock mínimo (>=)
-     * @return Lista de libros que cumplen los filtros (vacía si no hay resultados)
+     * Ejecuta búsqueda compuesta por texto y filtros de negocio.
+     *
+     * @param title texto por título.
+     * @param author texto por autor.
+     * @param category categoría exacta.
+     * @param isbn isbn exacto.
+     * @param ratingMin rating mínimo.
+     * @param ratingMax rating máximo.
+     * @param visible visibilidad esperada.
+     * @param minPrice precio mínimo.
+     * @param maxPrice precio máximo.
+     * @param publicationDateFrom fecha publicación inicial.
+     * @param publicationDateTo fecha publicación final.
+     * @param minStock stock mínimo.
+     * @return libros que cumplen criterios.
      */
     List<BookResponseDTO> search(String title, String author, String category, String isbn, Integer ratingMin,
             Integer ratingMax, Boolean visible, BigDecimal minPrice, BigDecimal maxPrice, LocalDate publicationDateFrom,
             LocalDate publicationDateTo, Integer minStock);
 
-    // METODOS ESPECIALES
+    /**
+     * Retorna sugerencias de autocompletado para el buscador.
+     *
+     * @param text texto parcial.
+     * @param size cantidad máxima solicitada.
+     * @return títulos sugeridos.
+     */
+    List<String> suggest(String text, Integer size);
 
     /**
-     * Verifica la disponibilidad de un libro.
-     * Retorna información sobre si el libro existe, está visible y tiene stock.
-     * 
-     * @return AvailabilityResponseDTO con la información
+     * Calcula facets de categorías y autores sobre una consulta.
+     *
+     * @param text texto opcional para acotar agregaciones.
+     * @param visible filtro opcional por visibilidad.
+     * @param category filtro opcional de categoría.
+     * @param author filtro opcional de autor.
+     * @return estructura agregada para filtros de UI.
+     */
+    BookFacetsResponseDTO facets(String text, Boolean visible, String category, String author);
+
+    /**
+     * Consulta disponibilidad de un libro para flujo de pagos.
+     *
+     * @param id identificador de libro.
+     * @return estado de disponibilidad o `null` si no existe.
      */
     AvailabilityResponseDTO checkAvailability(Long id);
 
     /**
-     * Actualiza el stock de un libro.
-     * Puede incrementar (quantity > 0) o decrementar (quantity < 0).
-     * 
-     * @param dto Contiene la cantidad a sumar/restar
-     * @return BookResponseDTO actualizado o null si no existe
-     * @throws IllegalArgumentException si el stock resultante sería negativo
+     * Ajusta el stock en base a una cantidad relativa (positiva o negativa).
+     *
+     * @param id identificador de libro.
+     * @param dto cantidad de ajuste.
+     * @return libro con stock actualizado o `null` si no existe.
      */
     BookResponseDTO updateStock(Long id, StockUpdateDTO dto);
 }
