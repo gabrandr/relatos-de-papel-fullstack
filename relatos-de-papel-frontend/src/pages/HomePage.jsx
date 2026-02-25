@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import BookCard from "../features/books/BookCard";
 import { getBooks } from "../api/booksApi";
 
 const HomePage = () => {
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const search = searchParams.get("search") || "";
+  const restoredScrollRef = useRef(false);
 
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +48,24 @@ const HomePage = () => {
       active = false;
     };
   }, [search]);
+
+  useEffect(() => {
+    restoredScrollRef.current = false;
+  }, [location.key]);
+
+  useEffect(() => {
+    if (loading || restoredScrollRef.current) {
+      return;
+    }
+
+    if (location.state?.restoreScroll && typeof location.state.scrollY === "number") {
+      restoredScrollRef.current = true;
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: location.state.scrollY, left: 0, behavior: "auto" });
+        window.history.replaceState({}, document.title);
+      });
+    }
+  }, [loading, location.state]);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">

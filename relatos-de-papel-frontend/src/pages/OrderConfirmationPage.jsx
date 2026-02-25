@@ -1,11 +1,23 @@
-import { useEffect, useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import useCountdown from "../hooks/useCountdown";
 import { useCartStore } from "../store/useCartStore";
 
 const OrderConfirmationPage = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const clearCart = useCartStore((state) => state.clearCart);
+  const hasRedirectedRef = useRef(false);
+
+  const redirectToHome = useCallback(() => {
+    if (hasRedirectedRef.current) {
+      return;
+    }
+    hasRedirectedRef.current = true;
+    navigate("/home");
+  }, [navigate]);
+  const countdown = useCountdown(5, redirectToHome);
 
   const orderReference = useMemo(() => {
     const ids = location.state?.paymentIds;
@@ -66,10 +78,17 @@ const OrderConfirmationPage = () => {
 
           <Link
             to="/home"
+            onClick={(event) => {
+              event.preventDefault();
+              redirectToHome();
+            }}
             className="w-full bg-background text-text-body py-3.5 rounded-xl font-bold hover:bg-border transition-colors block"
           >
             Volver a la tienda
           </Link>
+          <p className="text-sm text-text-muted">
+            Redirigiendo al catálogo en {countdown} segundos...
+          </p>
         </div>
       </div>
     </div>

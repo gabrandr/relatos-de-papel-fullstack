@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useCartStore } from "../../store/useCartStore";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 
 const BookCard = ({ book }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const addToCart = useCartStore((state) => state.addToCart);
   const [showToast, setShowToast] = useState(false);
   const [imageSrc, setImageSrc] = useState(book.image);
@@ -13,6 +14,15 @@ const BookCard = ({ book }) => {
     addToCart(book);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const handleOpenDetail = () => {
+    navigate(`/book/${book.id}`, {
+      state: {
+        fromPath: `${location.pathname}${location.search}`,
+        scrollY: window.scrollY,
+      },
+    });
   };
 
   return (
@@ -29,11 +39,11 @@ const BookCard = ({ book }) => {
           alt={book.title}
           className="w-full h-48 object-contain mb-4 cursor-pointer hover:opacity-80"
           onError={() => setImageSrc(book.imageFallback || "/book-placeholder.svg")}
-          onClick={() => navigate(`/book/${book.id}`)}
+          onClick={handleOpenDetail}
         />
         <h3
           className="font-bold cursor-pointer hover:text-primary"
-          onClick={() => navigate(`/book/${book.id}`)}
+          onClick={handleOpenDetail}
         >
           {book.title}
         </h3>

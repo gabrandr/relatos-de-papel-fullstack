@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { useCartStore } from "../../store/useCartStore";
 import { getBookSuggestions } from "../../api/booksApi";
@@ -10,6 +9,7 @@ import { getBookSuggestions } from "../../api/booksApi";
  */
 const Header = () => {
   const navigate = useNavigate(); //navegador
+  const location = useLocation();
   const cartCount = useCartStore((state) => state.getTotalItems()); //cantidad total de items en carrito
   const [search, setSearch] = useState(""); //estado para el buscador
   const [suggestions, setSuggestions] = useState([]);
@@ -33,6 +33,14 @@ const Header = () => {
     setShowSuggestions(false);
     navigate(`/home?search=${encodeURIComponent(value)}`);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const nextSearch = location.pathname === "/home" ? params.get("search") || "" : "";
+    setSearch(nextSearch);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!search.trim()) {
@@ -73,6 +81,13 @@ const Header = () => {
     }
   };
 
+  const handleClearSearch = () => {
+    setSearch("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+    navigate("/home");
+  };
+
   return (
     <header className="bg-white border-b border-border sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
@@ -92,8 +107,19 @@ const Header = () => {
               value={search}
               onChange={(e) => handleInputChange(e.target.value)}
               onFocus={() => setShowSuggestions(suggestions.length > 0)}
-              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 pr-10 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
+            {search.trim() && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-primary text-white font-bold text-base leading-none flex items-center justify-center hover:bg-primary-dark hover:scale-105 focus:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-150 shadow-sm"
+                aria-label="Limpiar búsqueda"
+                title="Limpiar búsqueda"
+              >
+                ×
+              </button>
+            )}
           </form>
 
           {showSuggestions && (

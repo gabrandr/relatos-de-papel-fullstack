@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 
 import Button from "../components/ui/Button";
 import { getBookById } from "../api/booksApi";
@@ -7,6 +7,7 @@ import { useCartStore } from "../store/useCartStore";
 
 const BookDetailPage = () => {
   const { id } = useParams();
+  const location = useLocation();
   const addToCart = useCartStore((state) => state.addToCart);
 
   const [book, setBook] = useState(null);
@@ -14,6 +15,11 @@ const BookDetailPage = () => {
   const [error, setError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [imageSrc, setImageSrc] = useState("");
+  const returnPath = typeof location.state?.fromPath === "string" ? location.state.fromPath : "/home";
+  const returnState =
+    typeof location.state?.scrollY === "number"
+      ? { restoreScroll: true, scrollY: location.state.scrollY }
+      : undefined;
 
   useEffect(() => {
     let active = true;
@@ -132,7 +138,11 @@ const BookDetailPage = () => {
                 Añadir al carrito
               </Button>
 
-              <Link to="/home" className="block text-center text-primary hover:underline">
+              <Link
+                to={returnPath}
+                state={returnState}
+                className="block text-center text-primary hover:underline"
+              >
                 ← Volver al catálogo
               </Link>
             </div>

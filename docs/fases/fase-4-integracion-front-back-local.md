@@ -51,3 +51,9 @@ Eliminar mocks del frontend, conectar contra el backend contenerizado y validar 
 - [2026-02-25] Validación de contrato gateway POST-only mantenido: frontend continúa enviando `POST` con `targetMethod` y el gateway traduce a método real.
 - [2026-02-25] Verificación de integración `payments -> catalogue`: compra de prueba decrementa stock en catálogo (caso validado vía gateway en libro `id=9`, de 14 a 13 unidades).
 - [2026-02-25] Revisión de colección Postman de gateway: continúa compatible con catálogo expandido (uso de variables `book_id`/`payment_id` sin hardcode de tamaño de catálogo).
+- [2026-02-25] Mejora UX en `Header`: buscador sincronizado con `URL search params`, botón visible para limpiar búsqueda (`X`) con tooltip "Limpiar búsqueda", y reset explícito a `/home` sin query.
+- [2026-02-25] Mejora UX de navegación catálogo/detalle: al abrir un libro se preserva contexto de retorno (`fromPath`, `scrollY`) y el enlace "Volver al catálogo" restaura ruta y posición previa del usuario.
+- [2026-02-25] Ajuste de scroll global: `ScrollToTop` evita forzar `scrollTo(0,0)` cuando la navegación indica restauración contextual, manteniendo comportamiento estándar en el resto de rutas.
+- [2026-02-25] Mejora post-compra: `OrderConfirmationPage` incorpora contador regresivo de 5 segundos reutilizando `useCountdown` para redirección automática a `/home`, conservando acción manual "Volver a la tienda".
+- [2026-02-25] Robustez de countdown: `useCountdown` actualizado para evitar callbacks duplicados y prevenir dobles redirecciones cuando coincide click manual con auto-redirección.
+- [2026-02-25] Validación frontend posterior a mejoras UX: `npm run build` ejecuta correctamente en `relatos-de-papel-frontend`.

@@ -1,23 +1,31 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Hook para manejar un contador regresivo.
  */
 const useCountdown = (initialValue, onComplete) => {
   const [count, setCount] = useState(initialValue);
+  const completedRef = useRef(false);
 
   useEffect(() => {
-    // Si llega a 0, ejecutar callback
+    setCount(initialValue);
+    completedRef.current = false;
+  }, [initialValue]);
+
+  useEffect(() => {
     if (count === 0) {
-      if (onComplete) onComplete();
+      if (!completedRef.current && onComplete) {
+        completedRef.current = true;
+        onComplete();
+      }
       return;
     }
-    // Cada segundo resta 1
-    const interval = setInterval(() => {
-      setCount((prev) => prev - 1);
+
+    const timer = setTimeout(() => {
+      setCount((prev) => Math.max(prev - 1, 0));
     }, 1000);
-    // Limpia intervalo al desmontar
-    return () => clearInterval(interval);
+
+    return () => clearTimeout(timer);
   }, [count, onComplete]);
 
   return count;
