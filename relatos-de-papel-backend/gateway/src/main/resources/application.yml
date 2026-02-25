@@ -41,11 +41,7 @@ spring:
                 allowedOrigins: "*"
                 allowedHeaders: "*"
                 allowedMethods:
-                  - GET
                   - POST
-                  - PUT
-                  - PATCH
-                  - DELETE
                   - OPTIONS
 
 ## We enable the Actuator API to be able to access <<host>>/actuator/gateway/routes
