@@ -72,13 +72,22 @@
 | C2 - Full-text/suggest/correcciones | Cumple | Endpoints operativos + frontend conectado | Cumple |
 | C3 - Facets | Cumple | Endpoint facets responde + frontend usa facets en UI | Cumple |
 | C4 - Integración local front-back | Cumple | Stack local activo + gateway contrato + compra/stock + build frontend | Cumple |
-| C5 - Integración remota | No evaluable (pendiente) | Fuera de alcance local | Pendiente despliegue |
+| C5 - Integración remota | Cumple | Backend y frontend públicos operativos | Cumple |
 | C6 - Videomemoria | No evaluable (pendiente) | Fuera de alcance de programación local | Pendiente entrega final |
 
 ## 5) Estado actual y siguiente foco
 
-- Estado local de programación: **apto para pasar a fase de despliegue**.
-- Foco recomendado siguiente: resolver C5 (deploy backend/frontend públicos) y cerrar C6 (videomemoria).
+- Estado actual del proyecto: **integración local y remota operativas**.
+- Foco recomendado siguiente: cerrar C6 (videomemoria) y evidencias finales de entrega.
+
+## 7) Actualización de integración remota (2026-02-26)
+
+- Backend Gateway desplegado en Railway:
+  - `https://spring-cloud-gateway-production-7111.up.railway.app/`
+- Frontend desplegado en Vercel:
+  - `https://relatos-de-papel-fullstack.vercel.app/`
+- Validación funcional remota:
+  - `POST /api/books/search` vía gateway remoto responde `HTTP 200`.
 
 ## 6) Actualización de estabilidad (2026-02-25, cierre de sesión)
 

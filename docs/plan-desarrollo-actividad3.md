@@ -106,3 +106,11 @@ Al terminar todos los criterios de rúbrica:
 1. Generar `docs/resumen-cambios-tecnicos.md`.
 2. Generar guion final de videomemoria dividido para 5 integrantes.
 3. Verificar checklist de entrega final (código + evidencias + video).
+
+## 11) Estado remoto actual (2026-02-26)
+
+- C5 (integración remota) completado.
+- Backend público (Railway Gateway):
+  - `https://spring-cloud-gateway-production-7111.up.railway.app/`
+- Frontend público (Vercel):
+  - `https://relatos-de-papel-fullstack.vercel.app/`
