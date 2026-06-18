@@ -15,12 +15,58 @@
 
 - Backend: `relatos-de-papel-backend/`
 - Frontend: `relatos-de-papel-frontend/`
-- Compose completo local backend: `relatos-de-papel-backend/docker-compose.backend-local.yml`
+- **Compose full stack (frontend + backend):** `docker-compose.yml` (raíz del repo)
+- Compose solo backend: `relatos-de-papel-backend/docker-compose.backend-local.yml`
 - Compose aislado payments + postgres: `relatos-de-papel-backend/docker-compose.payments-postgres.yml`
 
-## 3. Configurar variables de OpenSearch (Bonsai)
+## 3. Levantar todo con Docker Compose (recomendado)
 
-### 3.1. Crear `.env` en backend
+Desde la raíz del repositorio:
+
+### 3.1. Configurar variables
+
+```bash
+cp .env.example .env
+cp relatos-de-papel-backend/.env.example relatos-de-papel-backend/.env
+```
+
+Edita ambos archivos con tus credenciales reales de OpenSearch (Bonsai). El valor de `VITE_API_BASE_URL` debe apuntar al gateway **desde tu navegador**, normalmente `http://localhost:8762`.
+
+### 3.2. Arrancar el stack completo
+
+```bash
+docker compose up --build
+```
+
+Esto levanta:
+
+- `eureka-server` (`8761`)
+- `gateway` (`8762`)
+- `ms-books-catalogue` (`8081`)
+- `ms-books-payments` (`8082`)
+- `postgres-payments` (`5432`)
+- `frontend` (`5173`)
+
+### 3.3. Acceder a la aplicación
+
+- Frontend: `http://localhost:5173`
+- Eureka: `http://localhost:8761`
+
+### 3.4. Detener el stack
+
+```bash
+docker compose down
+```
+
+Para reinicio limpio de PostgreSQL:
+
+```bash
+docker compose down -v
+```
+
+## 4. Configurar variables de OpenSearch (Bonsai)
+
+### 4.1. Crear `.env` en backend
 
 Ubicación: `relatos-de-papel-backend/.env`
 
@@ -38,7 +84,7 @@ Notas:
 - El archivo `.env` ya está ignorado en git para no subir credenciales.
 - `OPENSEARCH_INDEX=relatos` es el índice que usa el buscador.
 
-## 4. Levantar backend completo en local
+## 5. Levantar solo backend en local
 
 Desde `relatos-de-papel-backend/`:
 
@@ -54,15 +100,15 @@ Esto levanta:
 - `ms-books-payments` (PostgreSQL)
 - `postgres-payments`
 
-## 5. Verificar que backend esté arriba
+## 6. Verificar que backend esté arriba
 
-### 5.1. Ver contenedores
+### 6.1. Ver contenedores
 
 ```bash
 docker compose -f docker-compose.backend-local.yml ps
 ```
 
-### 5.2. Revisar Eureka
+### 6.2. Revisar Eureka
 
 Abrir en navegador:
 
@@ -74,11 +120,11 @@ Deberías ver registrados al menos:
 - `MS-BOOKS-PAYMENTS`
 - `gateway`
 
-### 5.3. Probar gateway (recordatorio importante)
+### 6.3. Probar gateway (recordatorio importante)
 
 El gateway **solo recibe `POST`** y el método real va en `targetMethod`.
 
-### 5.4. Verificación explícita de restricción POST-only (recomendado para evidencia)
+### 6.4. Verificación explícita de restricción POST-only (recomendado para evidencia)
 
 Probar método directo `GET` al gateway:
 
@@ -96,7 +142,7 @@ curl -i -X OPTIONS http://localhost:8762/api/books
 
 Resultado esperado: respuesta de preflight (el gateway no ejecuta lógica de negocio por `OPTIONS`).
 
-## 6. Pruebas rápidas por API (vía Gateway)
+## 7. Pruebas rápidas por API (vía Gateway)
 
 Antes de ejecutar pruebas manuales, importa la colección:
 
@@ -113,7 +159,7 @@ Adicionalmente, en frontend el buscador del header está conectado a `search_as_
 
 - `POST /api/books/search/suggest` con `targetMethod=GET`
 
-### 6.1. Listar libros visibles
+### 7.1. Listar libros visibles
 
 `POST http://localhost:8762/api/books`
 
@@ -127,7 +173,7 @@ Body:
 }
 ```
 
-### 6.2. Búsqueda full-text
+### 7.2. Búsqueda full-text
 
 `POST http://localhost:8762/api/books/search`
 
@@ -144,7 +190,7 @@ Body:
 }
 ```
 
-### 6.3. Sugerencias
+### 7.3. Sugerencias
 
 `POST http://localhost:8762/api/books/search/suggest`
 
@@ -161,7 +207,7 @@ Body:
 }
 ```
 
-### 6.4. Facets
+### 7.4. Facets
 
 `POST http://localhost:8762/api/books/search/facets`
 
@@ -177,7 +223,7 @@ Body:
 }
 ```
 
-### 6.5. Crear pago
+### 7.5. Crear pago
 
 `POST http://localhost:8762/api/payments`
 
@@ -195,11 +241,11 @@ Body:
 }
 ```
 
-## 7. Levantar frontend en local
+## 8. Levantar frontend en local (sin Docker)
 
 Desde `relatos-de-papel-frontend/`:
 
-### 7.1. Configurar `.env`
+### 8.1. Configurar `.env`
 
 Crear `relatos-de-papel-frontend/.env` con:
 
@@ -207,13 +253,13 @@ Crear `relatos-de-papel-frontend/.env` con:
 VITE_API_BASE_URL=http://localhost:8762
 ```
 
-### 7.2. Instalar dependencias
+### 8.2. Instalar dependencias
 
 ```bash
 npm install
 ```
 
-### 7.3. Ejecutar frontend
+### 8.3. Ejecutar frontend
 
 ```bash
 npm run dev
@@ -223,7 +269,7 @@ Abrir:
 
 - URL de Vite (normalmente `http://localhost:5173`)
 
-## 8. Flujo funcional esperado (end-to-end)
+## 9. Flujo funcional esperado (end-to-end)
 
 1. Entrar a Home y ver libros cargados desde backend (no mocks).
 2. Buscar por título en header.
@@ -232,21 +278,27 @@ Abrir:
 5. Ir a checkout y confirmar pago.
 6. Ver confirmación con referencia de pagos.
 
-## 9. Comandos útiles de operación
+## 10. Comandos útiles de operación
 
-### 9.1. Detener stack backend
+### 10.1. Detener stack completo
+
+```bash
+docker compose down
+```
+
+### 10.2. Detener solo backend
 
 ```bash
 docker compose -f docker-compose.backend-local.yml down
 ```
 
-### 9.2. Detener y borrar volúmenes (reinicio limpio PostgreSQL)
+### 10.3. Detener y borrar volúmenes (reinicio limpio PostgreSQL)
 
 ```bash
 docker compose -f docker-compose.backend-local.yml down -v
 ```
 
-### 9.3. Ver logs de un servicio
+### 10.4. Ver logs de un servicio
 
 ```bash
 docker logs -f ms-books-catalogue
@@ -254,7 +306,7 @@ docker logs -f ms-books-payments
 docker logs -f gateway
 ```
 
-## 10. Troubleshooting rápido
+## 11. Troubleshooting rápido
 
 - Error de conexión a OpenSearch:
   - revisar `OPENSEARCH_URL`, `OPENSEARCH_USERNAME`, `OPENSEARCH_PASSWORD` en `relatos-de-papel-backend/.env`.
