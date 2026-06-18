@@ -93,8 +93,8 @@ services:
 
   frontend:
     build:
-      context: ./relatos-de-papel-frontend
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: docker/frontend/Dockerfile
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8762}
     container_name: relatos-frontend
